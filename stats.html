@@ -8,9 +8,9 @@
   <link rel="stylesheet" href="style.css" />
 </head>
 
-<body>
-  <header class="topbar">
-    <div class="brand">إحصائيات التحدي</div>
+<body class="stats-page">
+  <header class="topbar stats-topbar">
+    <div class="brand">🔥 Fitness Challenge</div>
     <nav>
       <a href="index.html">العرض</a>
       <a href="stats.html">الإحصائيات</a>
@@ -18,13 +18,23 @@
     </nav>
   </header>
 
-  <main class="container">
-    <section class="hero">
-      <h1>الإحصائيات</h1>
-      <p>تابع تقدمك في التحدي 💪⭐</p>
+  <main class="container stats-dashboard">
+
+    <section class="stats-hero">
+      <div>
+        <span class="hero-badge">تحدي اللياقة</span>
+        <h1>لوحة إنجازك</h1>
+        <p>كل ضغطة إنجاز تقربك من الكأس 🏆</p>
+      </div>
+
+      <div class="hero-ring">
+        <strong id="challengePercent">0%</strong>
+        <span>التحدي كامل</span>
+      </div>
     </section>
 
-    <section class="countdown-card">
+    <section class="countdown-card dashboard-countdown">
+      <span>⏳ الوقت المتبقي</span>
       <strong id="countdownText">باقي على نهاية التحدي</strong>
     </section>
 
@@ -32,26 +42,24 @@
       🏆 مبروك! أكملت التحدي بالكامل
     </section>
 
-    <section id="weekStars" class="week-stars"></section>
-
-    <section class="stats-board">
-      <div class="stat-card">
-        <span>تمارين مكتملة</span>
+    <section class="stats-board dashboard-kpis">
+      <div class="stat-card kpi-card">
+        <span>💪 تمارين مكتملة</span>
         <strong id="doneCount">0</strong>
       </div>
 
-      <div class="stat-card">
-        <span>دقائق رياضية</span>
+      <div class="stat-card kpi-card">
+        <span>⏱ دقائق رياضية</span>
         <strong id="doneMinutes">0</strong>
       </div>
 
-      <div class="stat-card">
-        <span>أسابيع مكتملة</span>
+      <div class="stat-card kpi-card">
+        <span>⭐ أسابيع مكتملة</span>
         <strong id="doneWeeks">0</strong>
       </div>
     </section>
 
-    <section class="progress-board">
+    <section class="progress-board dashboard-progress">
       <div class="progress-card">
         <span>إنجاز الأسبوع الحالي</span>
         <strong id="weekPercent">0%</strong>
@@ -70,12 +78,18 @@
 
       <div class="progress-card challenge">
         <span>إنجاز التحدي كامل</span>
-        <strong id="challengePercent">0%</strong>
+        <strong id="challengePercentText">0%</strong>
         <div class="bar">
           <div id="challengeBar"></div>
         </div>
       </div>
     </section>
+
+    <section class="achievement-card">
+      <h2>🏅 إنجازاتك</h2>
+      <div id="weekStars" class="week-stars"></div>
+    </section>
+
   </main>
 
   <script type="module" src="app.js"></script>

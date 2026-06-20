@@ -96,8 +96,14 @@ function calcPercent(items, done) {
 function setProgress(idPercent, idBar, percent) {
   const p = document.getElementById(idPercent);
   const b = document.getElementById(idBar);
+
   if (p) p.textContent = percent + "%";
   if (b) b.style.width = percent + "%";
+
+  if (idPercent === "challengePercent") {
+    const text = document.getElementById("challengePercentText");
+    if (text) text.textContent = percent + "%";
+  }
 }
 
 function playDing() {
