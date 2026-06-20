@@ -867,3 +867,19 @@ textarea {
   font-size: 42px;
   opacity: .18;
 }
+
+.dashboard-progress .progress-card:after {
+  left: 28px;
+  bottom: 26px;
+  font-size: 46px;
+  opacity: .28;
+  filter: none;
+}
+
+.dashboard-progress .bar {
+  margin-top: 24px;
+}
+
+.dashboard-progress .progress-card {
+  padding-bottom: 34px;
+}
