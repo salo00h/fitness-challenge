@@ -233,6 +233,8 @@ function updateProgressBoard(data) {
 }
 
 async function toggleDone(id) {
+  const scrollY = window.scrollY;
+
   const done = getDone();
   const wasDone = !!done[id];
 
@@ -244,11 +246,9 @@ async function toggleDone(id) {
   }
 
   const allData = await getData();
-
   const currentItem = allData.find(x => x.id === id);
 
   if (!wasDone && currentItem) {
-
     const dayItems = allData.filter(x =>
       Number(x.week) === Number(currentItem.week) &&
       Number(x.programDay) === Number(currentItem.programDay)
@@ -262,6 +262,11 @@ async function toggleDone(id) {
   }
 
   await renderViewer();
+
+  window.scrollTo({
+    top: scrollY,
+    behavior: "instant"
+  });
 
   if (document.getElementById("doneCount")) {
     updateProgressBoard(allData);
