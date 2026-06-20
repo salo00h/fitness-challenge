@@ -2,6 +2,9 @@ const KEY = "fitness_program_v3_weeks_days";
 const DONE_KEY = "fitness_program_done_v1";
 let currentWeek = 1;
 
+// عدل هنا عدد أيام التحدي
+const CHALLENGE_DAYS = 30;
+
 function getData() { return JSON.parse(localStorage.getItem(KEY) || "[]"); }
 function saveData(data) { localStorage.setItem(KEY, JSON.stringify(data)); }
 function getDone() { return JSON.parse(localStorage.getItem(DONE_KEY) || "{}"); }
@@ -59,6 +62,97 @@ function setProgress(idPercent, idBar, percent) {
   if (b) b.style.width = percent + "%";
 }
 
+function playDing() {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+
+    osc.type = "sine";
+    osc.frequency.setValueAtTime(880, ctx.currentTime);
+    osc.frequency.setValueAtTime(1175, ctx.currentTime + 0.08);
+
+    gain.gain.setValueAtTime(0.001, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.25, ctx.currentTime + 0.02);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.22);
+
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start();
+    osc.stop(ctx.currentTime + 0.25);
+  } catch (e) {}
+}
+
+function confetti() {
+  const emojis = ["🎉","✨","🏆","⭐","🔥","💪"];
+  for (let i = 0; i < 35; i++) {
+    const piece = document.createElement("div");
+    piece.className = "confetti";
+    piece.textContent = emojis[Math.floor(Math.random() * emojis.length)];
+    piece.style.left = Math.random() * 100 + "vw";
+    piece.style.animationDelay = Math.random() * 0.4 + "s";
+    piece.style.fontSize = (18 + Math.random() * 18) + "px";
+    document.body.appendChild(piece);
+    setTimeout(() => piece.remove(), 2300);
+  }
+}
+
+function challengeStartDate() {
+  let start = localStorage.getItem("challenge_start_date");
+  if (!start) {
+    start = new Date().toISOString();
+    localStorage.setItem("challenge_start_date", start);
+  }
+  return new Date(start);
+}
+
+function updateCountdown() {
+  const box = document.getElementById("countdownText");
+  if (!box) return;
+
+  const start = challengeStartDate();
+  const end = new Date(start);
+  end.setDate(start.getDate() + CHALLENGE_DAYS);
+
+  const now = new Date();
+  const diff = end - now;
+  const daysLeft = Math.max(0, Math.ceil(diff / (1000 * 60 * 60 * 24)));
+
+  box.textContent = `باقي ${daysLeft} يوم على نهاية التحدي`;
+}
+
+function getCompletedWeeks(data, done) {
+  const weeks = [...new Set(data.map(x => Number(x.week)))].sort((a,b)=>a-b);
+  return weeks.filter(week => {
+    const weekItems = workoutOnly(data.filter(x => Number(x.week) === week));
+    return weekItems.length > 0 && weekItems.every(x => done[x.id]);
+  });
+}
+
+function updateStats() {
+  const data = getData();
+  const done = getDone();
+  const workouts = workoutOnly(data);
+  const completed = workouts.filter(x => done[x.id]);
+  const minutes = completed.reduce((sum, x) => sum + (Number(x.duration) || 0), 0);
+  const completedWeeks = getCompletedWeeks(data, done);
+
+  const doneCount = document.getElementById("doneCount");
+  const doneMinutes = document.getElementById("doneMinutes");
+  const doneWeeks = document.getElementById("doneWeeks");
+
+  if (doneCount) doneCount.textContent = completed.length;
+  if (doneMinutes) doneMinutes.textContent = minutes;
+  if (doneWeeks) doneWeeks.textContent = completedWeeks.length;
+
+  const weekStars = document.getElementById("weekStars");
+  if (weekStars) {
+    weekStars.innerHTML = completedWeeks.length
+      ? completedWeeks.map(w => `<span>⭐ ${weekName(w)} مكتمل</span>`).join("")
+      : `<span class="muted-star">أكمل أسبوع كامل لتحصل على نجمة ⭐</span>`;
+  }
+}
+
 function updateProgressBoard() {
   const data = getData();
   const done = getDone();
@@ -66,16 +160,41 @@ function updateProgressBoard() {
   const weekItems = data.filter(x => Number(x.week) === Number(currentWeek));
   const monthItems = data.filter(x => Number(x.week) >= 1 && Number(x.week) <= 4);
   const challengeItems = data;
+  const challengePercent = calcPercent(challengeItems, done);
 
   setProgress("weekPercent", "weekBar", calcPercent(weekItems, done));
   setProgress("monthPercent", "monthBar", calcPercent(monthItems, done));
-  setProgress("challengePercent", "challengeBar", calcPercent(challengeItems, done));
+  setProgress("challengePercent", "challengeBar", challengePercent);
+
+  const trophy = document.getElementById("trophyBox");
+  if (trophy) {
+    if (challengePercent === 100 && workoutOnly(challengeItems).length > 0) {
+      trophy.classList.remove("hidden");
+    } else {
+      trophy.classList.add("hidden");
+    }
+  }
+
+  updateCountdown();
+  updateStats();
 }
 
 function toggleDone(id) {
   const done = getDone();
+  const wasDone = !!done[id];
   done[id] = !done[id];
   saveDone(done);
+
+  if (!wasDone) {
+    playDing();
+  }
+
+  const data = getData();
+  const percent = calcPercent(data, done);
+  if (!wasDone && percent === 100 && workoutOnly(data).length > 0) {
+    setTimeout(confetti, 150);
+  }
+
   renderViewer();
 }
 
@@ -205,6 +324,7 @@ function initAdmin() {
     if (confirm("هل تريد حذف كل البيانات؟")) {
       localStorage.removeItem(KEY);
       localStorage.removeItem(DONE_KEY);
+      localStorage.removeItem("challenge_start_date");
       renderAdminList();
     }
   };
