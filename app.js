@@ -148,19 +148,26 @@ function updateCountdown() {
   const box = document.getElementById("countdownText");
   if (!box) return;
 
-  const actualDays = [
+  const dayKeys = [
     ...new Set(
       cachedData
-        .map(x => Number(x.programDay))
-        .filter(n => !isNaN(n))
+        .map(x => `${Number(x.week)}-${Number(x.programDay)}`)
+        .filter(key => !key.includes("NaN"))
     )
   ];
 
-  const totalDays = actualDays.length || CHALLENGE_DAYS;
+  const totalDays = dayKeys.length || CHALLENGE_DAYS;
 
   const done = getDone();
-  const completedDays = actualDays.filter(day => {
-    const dayItems = cachedData.filter(x => Number(x.programDay) === Number(day));
+
+  const completedDays = dayKeys.filter(key => {
+    const [week, day] = key.split("-").map(Number);
+
+    const dayItems = cachedData.filter(x =>
+      Number(x.week) === week &&
+      Number(x.programDay) === day
+    );
+
     return dayItems.length > 0 && dayItems.every(x => done[x.id]);
   }).length;
 
