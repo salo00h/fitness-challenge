@@ -44,9 +44,6 @@ async function deleteExercise(id) {
   await deleteDoc(doc(db, COLLECTION_NAME, id));
 }
 
-function getLocalOldData() {
-  return JSON.parse(localStorage.getItem(LOCAL_KEY) || "[]");
-}
 
 function getDone() { return JSON.parse(localStorage.getItem(DONE_KEY) || "{}"); }
 function saveDone(done) { localStorage.setItem(DONE_KEY, JSON.stringify(done)); }
@@ -367,34 +364,9 @@ async function initAdmin() {
       await renderAdminList();
     }
   };
-
-  const migrateBtn = document.getElementById("migrateBtn");
-  if (migrateBtn) {
-    migrateBtn.onclick = migrateLocalToFirebase;
-  }
-
-  await renderAdminList();
+await renderAdminList();
 }
 
-async function migrateLocalToFirebase() {
-  const status = document.getElementById("migrateStatus");
-  const localData = getLocalOldData();
-
-  if (!localData.length) {
-    status.textContent = "لا توجد تمارين محلية قديمة في هذا المتصفح.";
-    return;
-  }
-
-  if (!confirm(`سيتم رفع ${localData.length} تمرين إلى Firebase. هل تريد المتابعة؟`)) return;
-
-  for (const item of localData) {
-    if (!item.id) item.id = uid();
-    await saveExercise(item);
-  }
-
-  status.textContent = `تم رفع ${localData.length} تمرين إلى Firebase بنجاح.`;
-  await renderAdminList();
-}
 
 async function renderAdminList() {
   const list = document.getElementById("adminList");
