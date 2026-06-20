@@ -565,56 +565,58 @@ textarea {
 
 .stats-page {
   background:
-    radial-gradient(circle at top right, rgba(255, 11, 95, .35), transparent 360px),
-    radial-gradient(circle at bottom left, rgba(139, 92, 246, .25), transparent 360px),
-    linear-gradient(135deg, #0f172a, #111827);
-  color: white;
+    radial-gradient(circle at top right, #ffe2ec 0, transparent 340px),
+    linear-gradient(180deg, #fff, #fafafa);
+  color: var(--text);
   min-height: 100vh;
 }
 
 .stats-page .topbar {
-  background: rgba(15, 23, 42, .82);
-  border-bottom: 1px solid rgba(255, 255, 255, .08);
+  background: rgba(255, 255, 255, .88);
+  border-bottom: 1px solid var(--border);
 }
 
-.stats-page nav a,
+.stats-page nav a {
+  color: var(--text)
+}
+
 .stats-page .brand {
-  color: white;
+  color: var(--pink)
 }
 
 .stats-dashboard {
-  padding-bottom: 40px;
+  padding-bottom: 40px
 }
 
 .stats-hero {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 24px;
+  background: linear-gradient(135deg, var(--pink), var(--pink2));
+  color: white;
+  border-radius: 26px;
   padding: 34px;
-  border-radius: 30px;
-  background:
-    linear-gradient(135deg, rgba(255, 11, 95, .92), rgba(139, 92, 246, .92));
-  box-shadow: 0 24px 60px rgba(0, 0, 0, .35);
   margin-bottom: 20px;
-  overflow: hidden;
+  box-shadow: 0 18px 40px rgba(255, 11, 95, .18);
   position: relative;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
 }
 
 .stats-hero:after {
   content: "";
   position: absolute;
-  width: 220px;
-  height: 220px;
+  width: 170px;
+  height: 170px;
   border-radius: 50%;
-  background: rgba(255, 255, 255, .13);
-  left: -70px;
-  top: -70px;
+  background: rgba(255, 255, 255, .18);
+  left: -55px;
+  top: -55px;
 }
 
 .hero-badge {
   display: inline-block;
-  background: rgba(255, 255, 255, .18);
+  background: rgba(255, 255, 255, .2);
   padding: 8px 14px;
   border-radius: 999px;
   font-weight: bold;
@@ -622,138 +624,94 @@ textarea {
 }
 
 .stats-hero h1 {
-  margin: 0;
-  font-size: 42px;
+  margin: 0 0 8px;
+  font-size: 36px;
 }
 
 .stats-hero p {
-  margin: 10px 0 0;
-  font-size: 18px;
+  margin: 0;
   color: white;
+  font-size: 18px;
 }
 
 .hero-ring {
-  width: 170px;
-  height: 170px;
+  width: 150px;
+  height: 150px;
   border-radius: 50%;
   background:
-    radial-gradient(circle, #111827 58%, transparent 59%),
-    conic-gradient(#22c55e 0deg, #fbbf24 130deg, #ff0b5f 250deg, #334155 0deg);
+    radial-gradient(circle, #fff 58%, transparent 59%),
+    conic-gradient(var(--pink) 0deg, var(--pink2) 120deg, #ffd1df 0deg);
   display: flex;
   flex-direction: column;
-  justify-content: center;
   align-items: center;
-  box-shadow: inset 0 0 30px rgba(0, 0, 0, .35), 0 15px 30px rgba(0, 0, 0, .28);
+  justify-content: center;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, .12);
   flex-shrink: 0;
+  position: relative;
   z-index: 1;
 }
 
 .hero-ring strong {
+  color: var(--pink);
   font-size: 34px;
-  color: white;
 }
 
 .hero-ring span {
-  color: #cbd5e1;
-  font-size: 13px;
+  color: var(--muted);
   font-weight: bold;
+  font-size: 13px;
 }
 
 .dashboard-countdown {
-  background: rgba(255, 255, 255, .1);
-  border: 1px solid rgba(255, 255, 255, .12);
-  color: white;
-  backdrop-filter: blur(14px);
+  background: white;
+  border: 1px solid var(--border);
+  color: var(--text);
 }
 
 .dashboard-countdown span {
   display: block;
-  color: #cbd5e1;
-  margin-bottom: 8px;
+  color: var(--muted);
   font-weight: bold;
+  margin-bottom: 8px;
 }
 
 .dashboard-countdown strong {
-  color: #fbbf24;
-  font-size: 30px;
-}
-
-.dashboard-kpis,
-.dashboard-progress {
-  gap: 18px;
+  color: var(--pink);
+  font-size: 28px;
 }
 
 .stats-page .stat-card,
 .stats-page .progress-card,
 .achievement-card {
-  background: rgba(255, 255, 255, .1);
-  border: 1px solid rgba(255, 255, 255, .12);
-  color: white;
-  backdrop-filter: blur(14px);
-  box-shadow: 0 18px 45px rgba(0, 0, 0, .25);
-}
-
-.kpi-card {
-  position: relative;
-  overflow: hidden;
-}
-
-.kpi-card:before {
-  content: "";
-  position: absolute;
-  width: 90px;
-  height: 90px;
-  border-radius: 50%;
-  background: rgba(255, 11, 95, .2);
-  left: -25px;
-  top: -25px;
+  background: white;
+  border: 1px solid var(--border);
+  color: var(--text);
+  box-shadow: 0 10px 25px rgba(0, 0, 0, .06);
 }
 
 .stats-page .stat-card span,
 .stats-page .progress-card span {
-  color: #cbd5e1;
+  color: var(--muted);
 }
 
 .stats-page .stat-card strong,
 .stats-page .progress-card strong {
-  color: white;
-  font-size: 38px;
+  color: var(--pink);
 }
 
 .stats-page .progress-card.challenge {
-  background: linear-gradient(135deg, rgba(255, 11, 95, .25), rgba(139, 92, 246, .18));
-  border-color: rgba(255, 255, 255, .18);
-}
-
-.stats-page .bar {
-  background: rgba(255, 255, 255, .14);
-  height: 13px;
-}
-
-.stats-page .bar div {
-  background: linear-gradient(90deg, #22c55e, #fbbf24, #ff0b5f);
+  background: linear-gradient(135deg, #fff, #fff5f8);
+  border-color: #ffd1df;
 }
 
 .achievement-card {
-  border-radius: 24px;
+  border-radius: 22px;
   padding: 22px;
   margin-top: 20px;
 }
 
 .achievement-card h2 {
   margin: 0 0 16px;
-}
-
-.stats-page .week-stars span {
-  background: rgba(251, 191, 36, .16);
-  color: #fde68a;
-  border-color: rgba(251, 191, 36, .35);
-}
-
-.stats-page .week-stars .muted-star {
-  background: rgba(255, 255, 255, .08);
-  color: #cbd5e1;
-  border-color: rgba(255, 255, 255, .12);
 }
 
 @media(max-width:800px) {
@@ -763,11 +721,11 @@ textarea {
   }
 
   .stats-hero h1 {
-    font-size: 32px;
+    font-size: 28px;
   }
 
   .hero-ring {
-    width: 145px;
-    height: 145px;
+    width: 130px;
+    height: 130px;
   }
 }
