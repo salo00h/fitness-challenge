@@ -1,4 +1,4 @@
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
+﻿import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
 import {
   getFirestore,
   collection,
@@ -27,7 +27,7 @@ const COLLECTION_NAME = "exercises";
 let currentWeek = 1;
 let cachedData = [];
 
-// عدل هنا عدد أيام التحدي
+// Ø¹Ø¯Ù„ Ù‡Ù†Ø§ Ø¹Ø¯Ø¯ Ø£ÙŠØ§Ù… Ø§Ù„ØªØ­Ø¯ÙŠ
 const CHALLENGE_DAYS = 30;
 
 async function getData() {
@@ -49,14 +49,14 @@ function getDone() { return JSON.parse(localStorage.getItem(DONE_KEY) || "{}"); 
 function saveDone(done) { localStorage.setItem(DONE_KEY, JSON.stringify(done)); }
 function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2); }
 
-function weekName(n) { return `الأسبوع ${toArabicOrdinal(n)}`; }
-function dayName(n) { return `اليوم ${toArabicOrdinal(n)}`; }
+function weekName(n) { return `Ø§Ù„Ø£Ø³Ø¨ÙˆØ¹ ${toArabicOrdinal(n)}`; }
+function dayName(n) { return `Ø§Ù„ÙŠÙˆÙ… ${toArabicOrdinal(n)}`; }
 
 function toArabicOrdinal(n) {
   const names = {
-    1: "الأول", 2: "الثاني", 3: "الثالث", 4: "الرابع",
-    5: "الخامس", 6: "السادس", 7: "السابع", 8: "الثامن",
-    9: "التاسع", 10: "العاشر"
+    1: "Ø§Ù„Ø£ÙˆÙ„", 2: "Ø§Ù„Ø«Ø§Ù†ÙŠ", 3: "Ø§Ù„Ø«Ø§Ù„Ø«", 4: "Ø§Ù„Ø±Ø§Ø¨Ø¹",
+    5: "Ø§Ù„Ø®Ø§Ù…Ø³", 6: "Ø§Ù„Ø³Ø§Ø¯Ø³", 7: "Ø§Ù„Ø³Ø§Ø¨Ø¹", 8: "Ø§Ù„Ø«Ø§Ù…Ù†",
+    9: "Ø§Ù„ØªØ§Ø³Ø¹", 10: "Ø§Ù„Ø¹Ø§Ø´Ø±"
   };
   return names[Number(n)] || n;
 }
@@ -122,7 +122,7 @@ function playDing() {
 }
 
 function confetti() {
-  const emojis = ["🎉","✨","🏆","⭐","🔥","💪"];
+  const emojis = ["ðŸŽ‰","âœ¨","ðŸ†","â­","ðŸ”¥","ðŸ’ª"];
   for (let i = 0; i < 35; i++) {
     const piece = document.createElement("div");
     piece.className = "confetti";
@@ -156,7 +156,7 @@ function updateCountdown() {
   const diff = end - now;
   const daysLeft = Math.max(0, Math.ceil(diff / (1000 * 60 * 60 * 24)));
 
-  box.textContent = `باقي ${daysLeft} يوم على نهاية التحدي`;
+  box.textContent = `Ø¨Ø§Ù‚ÙŠ ${daysLeft} ÙŠÙˆÙ… Ø¹Ù„Ù‰ Ù†Ù‡Ø§ÙŠØ© Ø§Ù„ØªØ­Ø¯ÙŠ`;
 }
 
 function getCompletedWeeks(data, done) {
@@ -185,8 +185,8 @@ function updateStats(data) {
   const weekStars = document.getElementById("weekStars");
   if (weekStars) {
     weekStars.innerHTML = completedWeeks.length
-      ? completedWeeks.map(w => `<span>⭐ ${weekName(w)} مكتمل</span>`).join("")
-      : `<span class="muted-star">أكمل أسبوع كامل لتحصل على نجمة ⭐</span>`;
+      ? completedWeeks.map(w => `<span>â­ ${weekName(w)} Ù…ÙƒØªÙ…Ù„</span>`).join("")
+      : `<span class="muted-star">Ø£ÙƒÙ…Ù„ Ø£Ø³Ø¨ÙˆØ¹ ÙƒØ§Ù…Ù„ Ù„ØªØ­ØµÙ„ Ø¹Ù„Ù‰ Ù†Ø¬Ù…Ø© â­</span>`;
   }
 }
 
@@ -250,7 +250,7 @@ async function renderViewer() {
     await renderViewer();
   };
 
-  daysBox.innerHTML = `<div class="empty card">جاري تحميل التمارين...</div>`;
+  daysBox.innerHTML = `<div class="empty card">Ø¬Ø§Ø±ÙŠ ØªØ­Ù…ÙŠÙ„ Ø§Ù„ØªÙ…Ø§Ø±ÙŠÙ†...</div>`;
 
   const allData = await getData();
   updateProgressBoard(allData);
@@ -260,7 +260,7 @@ async function renderViewer() {
     .sort((a, b) => (Number(a.programDay) - Number(b.programDay)));
 
   if (data.length === 0) {
-    daysBox.innerHTML = `<div class="empty card">لا توجد تمارين في ${weekName(currentWeek)}. أضفها من صفحة الإعدادات.</div>`;
+    daysBox.innerHTML = `<div class="empty card">Ù„Ø§ ØªÙˆØ¬Ø¯ ØªÙ…Ø§Ø±ÙŠÙ† ÙÙŠ ${weekName(currentWeek)}. Ø£Ø¶ÙÙ‡Ø§ Ù…Ù† ØµÙØ­Ø© Ø§Ù„Ø¥Ø¹Ø¯Ø§Ø¯Ø§Øª.</div>`;
     return;
   }
 
@@ -280,12 +280,12 @@ async function renderViewer() {
         <div class="day-head">
           <div>
             <h2>${dayName(day)}</h2>
-            <span class="day-progress">إنجاز اليوم: ${dayPercent}%</span>
+            <span class="day-progress">Ø¥Ù†Ø¬Ø§Ø² Ø§Ù„ÙŠÙˆÙ…: ${dayPercent}%</span>
           </div>
           <span class="week-label">${weekName(currentWeek)}</span>
         </div>
 
-        ${allRest ? `<div class="rest">يوم راحة 🌸</div>` : ""}
+        ${allRest ? `<div class="rest">ÙŠÙˆÙ… Ø±Ø§Ø­Ø© ðŸŒ¸</div>` : ""}
 
         <div class="exercises">
           ${items.map(item => item.type === "rest" ? "" : `
@@ -293,16 +293,16 @@ async function renderViewer() {
               <a href="${item.youtube || "#"}" target="_blank" rel="noopener">
                 <div class="image-wrap">
                   <img src="${getYoutubeThumb(item.youtube)}" alt="${escapeHtml(item.title)}">
-                  ${done[item.id] ? `<span class="done-ribbon">مكتمل ✓</span>` : ""}
+                  ${done[item.id] ? `<span class="done-ribbon">Ù…ÙƒØªÙ…Ù„ âœ“</span>` : ""}
                 </div>
               </a>
 
               <div class="body">
-                <span class="badge">${item.duration ? item.duration + " دقيقة" : "بدون مدة"}</span>
+                <span class="badge">${item.duration ? item.duration + " Ø¯Ù‚ÙŠÙ‚Ø©" : "Ø¨Ø¯ÙˆÙ† Ù…Ø¯Ø©"}</span>
                 <h3>${escapeHtml(item.title)}</h3>
                 ${item.notes ? `<div class="notes">${escapeHtml(item.notes)}</div>` : ""}
                 <button class="done-btn ${done[item.id] ? "is-done" : ""}" onclick="toggleDone('${item.id}')">
-                  ${done[item.id] ? "تم الإنجاز ✓" : "تم إنجاز التمرين"}
+                  ${done[item.id] ? "ØªÙ… Ø§Ù„Ø¥Ù†Ø¬Ø§Ø² âœ“" : "ØªÙ… Ø¥Ù†Ø¬Ø§Ø² Ø§Ù„ØªÙ…Ø±ÙŠÙ†"}
                 </button>
               </div>
             </div>
@@ -325,7 +325,7 @@ async function initAdmin() {
   youtubeInput.addEventListener("input", () => {
     const url = youtubeInput.value.trim();
     const id = getYoutubeId(url);
-    previewBox.innerHTML = id ? `<img src="${getYoutubeThumb(url)}" alt="معاينة صورة اليوتيوب">` : "";
+    previewBox.innerHTML = id ? `<img src="${getYoutubeThumb(url)}" alt="Ù…Ø¹Ø§ÙŠÙ†Ø© ØµÙˆØ±Ø© Ø§Ù„ÙŠÙˆØªÙŠÙˆØ¨">` : "";
   });
 
   form.addEventListener("submit", async (e) => {
@@ -358,7 +358,7 @@ async function initAdmin() {
   };
 
   document.getElementById("clearAll").onclick = async () => {
-    if (confirm("هل تريد حذف كل التمارين من Firebase؟")) {
+    if (confirm("Ù‡Ù„ ØªØ±ÙŠØ¯ Ø­Ø°Ù ÙƒÙ„ Ø§Ù„ØªÙ…Ø§Ø±ÙŠÙ† Ù…Ù† FirebaseØŸ")) {
       const data = await getData();
       for (const item of data) await deleteExercise(item.id);
       await renderAdminList();
@@ -372,14 +372,14 @@ async function renderAdminList() {
   const list = document.getElementById("adminList");
   if (!list) return;
 
-  list.innerHTML = `<div class="empty card">جاري تحميل التمارين...</div>`;
+  list.innerHTML = `<div class="empty card">Ø¬Ø§Ø±ÙŠ ØªØ­Ù…ÙŠÙ„ Ø§Ù„ØªÙ…Ø§Ø±ÙŠÙ†...</div>`;
 
   const data = (await getData()).sort((a, b) =>
     Number(a.week) - Number(b.week) || Number(a.programDay) - Number(b.programDay)
   );
 
   if (data.length === 0) {
-    list.innerHTML = `<div class="empty card">لا توجد بيانات حتى الآن.</div>`;
+    list.innerHTML = `<div class="empty card">Ù„Ø§ ØªÙˆØ¬Ø¯ Ø¨ÙŠØ§Ù†Ø§Øª Ø­ØªÙ‰ Ø§Ù„Ø¢Ù†.</div>`;
     return;
   }
 
@@ -388,12 +388,12 @@ async function renderAdminList() {
       <img src="${getYoutubeThumb(item.youtube)}" alt="">
       <div class="admin-info">
         <h3>${escapeHtml(item.title)}</h3>
-        <div class="small">${weekName(item.week)} - ${dayName(item.programDay)} - ${item.duration ? item.duration + " دقيقة" : "بدون مدة"}</div>
-        <div class="small">${item.type === "rest" ? "راحة" : "تمرين"} ${item.youtube ? " - يوجد رابط يوتيوب" : ""}</div>
+        <div class="small">${weekName(item.week)} - ${dayName(item.programDay)} - ${item.duration ? item.duration + " Ø¯Ù‚ÙŠÙ‚Ø©" : "Ø¨Ø¯ÙˆÙ† Ù…Ø¯Ø©"}</div>
+        <div class="small">${item.type === "rest" ? "Ø±Ø§Ø­Ø©" : "ØªÙ…Ø±ÙŠÙ†"} ${item.youtube ? " - ÙŠÙˆØ¬Ø¯ Ø±Ø§Ø¨Ø· ÙŠÙˆØªÙŠÙˆØ¨" : ""}</div>
       </div>
       <div class="actions">
-        <button onclick="editItem('${item.id}')">تعديل</button>
-        <button class="danger" onclick="deleteItemFromAdmin('${item.id}')">حذف</button>
+        <button onclick="editItem('${item.id}')">ØªØ¹Ø¯ÙŠÙ„</button>
+        <button class="danger" onclick="deleteItemFromAdmin('${item.id}')">Ø­Ø°Ù</button>
       </div>
     </div>
   `).join("");
@@ -411,12 +411,12 @@ function editItem(id) {
   document.getElementById("type").value = item.type;
   document.getElementById("youtube").value = item.youtube;
   document.getElementById("notes").value = item.notes;
-  document.getElementById("previewBox").innerHTML = getYoutubeId(item.youtube) ? `<img src="${getYoutubeThumb(item.youtube)}" alt="معاينة">` : "";
+  document.getElementById("previewBox").innerHTML = getYoutubeId(item.youtube) ? `<img src="${getYoutubeThumb(item.youtube)}" alt="Ù…Ø¹Ø§ÙŠÙ†Ø©">` : "";
   window.scrollTo({ top: 0, behavior: "smooth" });
 }
 
 async function deleteItemFromAdmin(id) {
-  if (!confirm("حذف هذا التمرين؟")) return;
+  if (!confirm("Ø­Ø°Ù Ù‡Ø°Ø§ Ø§Ù„ØªÙ…Ø±ÙŠÙ†ØŸ")) return;
   await deleteExercise(id);
 
   const done = getDone();
@@ -431,7 +431,7 @@ function placeholder() {
     <svg xmlns='http://www.w3.org/2000/svg' width='600' height='400'>
       <rect width='100%' height='100%' fill='#ffe2ec'/>
       <text x='50%' y='50%' dominant-baseline='middle' text-anchor='middle'
-        font-family='Arial' font-size='32' fill='#ff0b5f'>رابط يوتيوب</text>
+        font-family='Arial' font-size='32' fill='#ff0b5f'>Ø±Ø§Ø¨Ø· ÙŠÙˆØªÙŠÙˆØ¨</text>
     </svg>
   `);
 }
@@ -453,3 +453,4 @@ if (document.getElementById("days")) {
 if (document.getElementById("exerciseForm")) {
   initAdmin();
 }
+
