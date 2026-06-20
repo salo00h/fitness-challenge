@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>الإحصائيات</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+
+<body>
+  <header class="topbar">
+    <div class="brand">إحصائيات التحدي</div>
+    <nav>
+      <a href="index.html">العرض</a>
+      <a href="stats.html">الإحصائيات</a>
+      <a href="admin.html">الإعدادات</a>
+    </nav>
+  </header>
+
+  <main class="container">
+    <section class="hero">
+      <h1>الإحصائيات</h1>
+      <p>تابع تقدمك في التحدي 💪⭐</p>
+    </section>
+
+    <section class="countdown-card">
+      <strong id="countdownText">باقي على نهاية التحدي</strong>
+    </section>
+
+    <section id="trophyBox" class="trophy-box hidden">
+      🏆 مبروك! أكملت التحدي بالكامل
+    </section>
+
+    <section id="weekStars" class="week-stars"></section>
+
+    <section class="stats-board">
+      <div class="stat-card">
+        <span>تمارين مكتملة</span>
+        <strong id="doneCount">0</strong>
+      </div>
+
+      <div class="stat-card">
+        <span>دقائق رياضية</span>
+        <strong id="doneMinutes">0</strong>
+      </div>
+
+      <div class="stat-card">
+        <span>أسابيع مكتملة</span>
+        <strong id="doneWeeks">0</strong>
+      </div>
+    </section>
+
+    <section class="progress-board">
+      <div class="progress-card">
+        <span>إنجاز الأسبوع الحالي</span>
+        <strong id="weekPercent">0%</strong>
+        <div class="bar">
+          <div id="weekBar"></div>
+        </div>
+      </div>
+
+      <div class="progress-card">
+        <span>إنجاز الشهر</span>
+        <strong id="monthPercent">0%</strong>
+        <div class="bar">
+          <div id="monthBar"></div>
+        </div>
+      </div>
+
+      <div class="progress-card challenge">
+        <span>إنجاز التحدي كامل</span>
+        <strong id="challengePercent">0%</strong>
+        <div class="bar">
+          <div id="challengeBar"></div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script type="module" src="app.js"></script>
+</body>
+
+</html>

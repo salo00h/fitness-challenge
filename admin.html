@@ -13,6 +13,7 @@
     <div class="brand">إعدادات البرنامج</div>
     <nav>
       <a href="index.html">العرض</a>
+      <a href="stats.html">الإحصائيات</a>
       <a href="admin.html">الإعدادات</a>
     </nav>
   </header>
@@ -22,7 +23,8 @@
       <h1>إضافة تمرين</h1>
       <p>النجاح يبدأ بخطوة، ابدأ التحدي الآن. 💪🔥</p>
     </section>
-<form id="exerciseForm" class="card form">
+
+    <form id="exerciseForm" class="card form">
       <input type="hidden" id="editId" />
 
       <label>اسم التمرين</label>
@@ -42,6 +44,7 @@
             <option value="8">الأسبوع الثامن</option>
           </select>
         </div>
+
         <div>
           <label>اليوم</label>
           <select id="programDay" required>
@@ -61,6 +64,7 @@
           <label>مدة التمرين (بالدقائق)</label>
           <input type="number" id="duration" min="1" placeholder="15" />
         </div>
+
         <div>
           <label>نوع اليوم</label>
           <select id="type">
