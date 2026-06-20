@@ -148,13 +148,23 @@ function updateCountdown() {
   const box = document.getElementById("countdownText");
   if (!box) return;
 
-  const start = challengeStartDate();
-  const end = new Date(start);
-  end.setDate(start.getDate() + CHALLENGE_DAYS);
+  const actualDays = [
+    ...new Set(
+      cachedData
+        .map(x => Number(x.programDay))
+        .filter(n => !isNaN(n))
+    )
+  ];
 
-  const now = new Date();
-  const diff = end - now;
-  const daysLeft = Math.max(0, Math.ceil(diff / (1000 * 60 * 60 * 24)));
+  const totalDays = actualDays.length || CHALLENGE_DAYS;
+
+  const done = getDone();
+  const completedDays = actualDays.filter(day => {
+    const dayItems = cachedData.filter(x => Number(x.programDay) === Number(day));
+    return dayItems.length > 0 && dayItems.every(x => done[x.id]);
+  }).length;
+
+  const daysLeft = Math.max(0, totalDays - completedDays);
 
   box.textContent = `باقي ${daysLeft} يوم على نهاية التحدي`;
 }
