@@ -235,18 +235,37 @@ function updateProgressBoard(data) {
 async function toggleDone(id) {
   const done = getDone();
   const wasDone = !!done[id];
+
   done[id] = !done[id];
   saveDone(done);
 
-  if (!wasDone) playDing();
+  if (!wasDone) {
+    playDing();
+  }
 
   const allData = await getData();
-  const percent = calcPercent(allData, done);
-  if (!wasDone && percent === 100 && workoutOnly(allData).length > 0) {
-    setTimeout(confetti, 150);
+
+  const currentItem = allData.find(x => x.id === id);
+
+  if (!wasDone && currentItem) {
+
+    const dayItems = allData.filter(x =>
+      Number(x.week) === Number(currentItem.week) &&
+      Number(x.programDay) === Number(currentItem.programDay)
+    );
+
+    const dayPercent = calcPercent(dayItems, done);
+
+    if (dayPercent === 100) {
+      setTimeout(confetti, 150);
+    }
   }
 
   await renderViewer();
+
+  if (document.getElementById("doneCount")) {
+    updateProgressBoard(allData);
+  }
 }
 
 async function renderViewer() {
