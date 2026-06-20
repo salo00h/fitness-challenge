@@ -83,7 +83,7 @@ function getYoutubeThumb(url) {
 }
 
 function workoutOnly(data) {
-  return data.filter(x => x.type !== "rest");
+  return data;
 }
 
 function calcPercent(items, done) {
@@ -118,11 +118,11 @@ function playDing() {
     gain.connect(ctx.destination);
     osc.start();
     osc.stop(ctx.currentTime + 0.25);
-  } catch (e) {}
+  } catch (e) { }
 }
 
 function confetti() {
-  const emojis = ["🎉","✨","🏆","⭐","🔥","💪"];
+  const emojis = ["🎉", "✨", "🏆", "⭐", "🔥", "💪"];
   for (let i = 0; i < 35; i++) {
     const piece = document.createElement("div");
     piece.className = "confetti";
@@ -160,7 +160,7 @@ function updateCountdown() {
 }
 
 function getCompletedWeeks(data, done) {
-  const weeks = [...new Set(data.map(x => Number(x.week)))].sort((a,b)=>a-b);
+  const weeks = [...new Set(data.map(x => Number(x.week)))].sort((a, b) => a - b);
   return weeks.filter(week => {
     const weekItems = workoutOnly(data.filter(x => Number(x.week) === week));
     return weekItems.length > 0 && weekItems.every(x => done[x.id]);
@@ -257,7 +257,7 @@ async function renderViewer() {
 
   const data = allData
     .filter(x => Number(x.week) === Number(currentWeek))
-    .sort((a, b) => (Number(a.programDay) - Number(b.programDay)));
+    .sort((a, b) => Number(a.programDay) - Number(b.programDay));
 
   if (data.length === 0) {
     daysBox.innerHTML = `<div class="empty card">لا توجد تمارين في ${weekName(currentWeek)}. أضفها من صفحة الإعدادات.</div>`;
@@ -270,47 +270,72 @@ async function renderViewer() {
     grouped[item.programDay].push(item);
   });
 
-  daysBox.innerHTML = Object.keys(grouped).sort((a, b) => a - b).map(day => {
-    const items = grouped[day];
-    const allRest = items.every(i => i.type === "rest");
-    const dayPercent = calcPercent(items, done);
+  daysBox.innerHTML = Object.keys(grouped)
+    .sort((a, b) => a - b)
+    .map(day => {
+      const items = grouped[day];
+      const allRest = items.every(i => i.type === "rest");
+      const dayPercent = calcPercent(items, done);
+      const restItem = items[0];
 
-    return `
-      <article class="day-card">
-        <div class="day-head">
-          <div>
-            <h2>${dayName(day)}</h2>
-            <span class="day-progress">إنجاز اليوم: ${dayPercent}%</span>
-          </div>
-          <span class="week-label">${weekName(currentWeek)}</span>
-        </div>
-
-        ${allRest ? `<div class="rest">يوم راحة 🌸</div>` : ""}
-
-        <div class="exercises">
-          ${items.map(item => item.type === "rest" ? "" : `
-            <div class="exercise ${done[item.id] ? "completed" : ""}">
-              <a href="${item.youtube || "#"}" target="_blank" rel="noopener">
-                <div class="image-wrap">
-                  <img src="${getYoutubeThumb(item.youtube)}" alt="${escapeHtml(item.title)}">
-                  ${done[item.id] ? `<span class="done-ribbon">مكتمل ✓</span>` : ""}
-                </div>
-              </a>
-
-              <div class="body">
-                <span class="badge">${item.duration ? item.duration + " دقيقة" : "بدون مدة"}</span>
-                <h3>${escapeHtml(item.title)}</h3>
-                ${item.notes ? `<div class="notes">${escapeHtml(item.notes)}</div>` : ""}
-                <button class="done-btn ${done[item.id] ? "is-done" : ""}" onclick="toggleDone('${item.id}')">
-                  ${done[item.id] ? "تم الإنجاز ✓" : "تم إنجاز التمرين"}
-                </button>
-              </div>
+      return `
+        <article class="day-card">
+          <div class="day-head">
+            <div>
+              <h2>${dayName(day)}</h2>
+              <span class="day-progress">إنجاز اليوم: ${dayPercent}%</span>
             </div>
-          `).join("")}
-        </div>
-      </article>
-    `;
-  }).join("");
+            <span class="week-label">${weekName(currentWeek)}</span>
+          </div>
+
+          ${allRest
+          ? `
+                <div class="rest">
+                  <div>يوم راحة 🌸</div>
+                  <button
+                    class="done-btn ${done[restItem.id] ? "is-done" : ""}"
+                    onclick="toggleDone('${restItem.id}')">
+                    ${done[restItem.id] ? "تم الإنجاز ✓" : "تم إنجاز يوم الراحة"}
+                  </button>
+                </div>
+              `
+          : ""
+        }
+
+          <div class="exercises">
+            ${items
+          .map(item =>
+            item.type === "rest"
+              ? ""
+              : `
+                    <div class="exercise ${done[item.id] ? "completed" : ""}">
+                      <a href="${item.youtube || "#"}" target="_blank" rel="noopener">
+                        <div class="image-wrap">
+                          <img src="${getYoutubeThumb(item.youtube)}" alt="${escapeHtml(item.title)}">
+                          ${done[item.id] ? `<span class="done-ribbon">مكتمل ✓</span>` : ""}
+                        </div>
+                      </a>
+
+                      <div class="body">
+                        <span class="badge">${item.duration ? item.duration + " دقيقة" : "بدون مدة"}</span>
+                        <h3>${escapeHtml(item.title)}</h3>
+                        ${item.notes ? `<div class="notes">${escapeHtml(item.notes)}</div>` : ""}
+
+                        <button
+                          class="done-btn ${done[item.id] ? "is-done" : ""}"
+                          onclick="toggleDone('${item.id}')">
+                          ${done[item.id] ? "تم الإنجاز ✓" : "تم إنجاز التمرين"}
+                        </button>
+                      </div>
+                    </div>
+                  `
+          )
+          .join("")}
+          </div>
+        </article>
+      `;
+    })
+    .join("");
 
   updateProgressBoard(allData);
 }
@@ -325,11 +350,15 @@ async function initAdmin() {
   youtubeInput.addEventListener("input", () => {
     const url = youtubeInput.value.trim();
     const id = getYoutubeId(url);
-    previewBox.innerHTML = id ? `<img src="${getYoutubeThumb(url)}" alt="معاينة صورة اليوتيوب">` : "";
+
+    previewBox.innerHTML = id
+      ? `<img src="${getYoutubeThumb(url)}" alt="معاينة صورة اليوتيوب">`
+      : "";
   });
 
-  form.addEventListener("submit", async (e) => {
+  form.addEventListener("submit", async e => {
     e.preventDefault();
+
     const editId = document.getElementById("editId").value;
 
     const item = {
@@ -348,6 +377,7 @@ async function initAdmin() {
     form.reset();
     previewBox.innerHTML = "";
     document.getElementById("editId").value = "";
+
     await renderAdminList();
   });
 
@@ -360,11 +390,16 @@ async function initAdmin() {
   document.getElementById("clearAll").onclick = async () => {
     if (confirm("هل تريد حذف كل التمارين من Firebase؟")) {
       const data = await getData();
-      for (const item of data) await deleteExercise(item.id);
+
+      for (const item of data) {
+        await deleteExercise(item.id);
+      }
+
       await renderAdminList();
     }
   };
-await renderAdminList();
+
+  await renderAdminList();
 }
 
 
