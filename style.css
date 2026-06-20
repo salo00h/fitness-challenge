@@ -798,3 +798,72 @@ textarea {
     font-size: 26px;
   }
 }
+
+
+.dashboard-progress .progress-card {
+  position: relative;
+  overflow: hidden;
+  padding: 26px;
+  min-height: 170px;
+}
+
+.dashboard-progress .progress-card:before {
+  content: "";
+  position: absolute;
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  background: var(--soft);
+  left: -38px;
+  top: -38px;
+}
+
+.dashboard-progress .progress-card span {
+  position: relative;
+  z-index: 1;
+  font-size: 18px;
+}
+
+.dashboard-progress .progress-card strong {
+  position: relative;
+  z-index: 1;
+  font-size: 48px;
+  margin-top: 8px;
+  display: block;
+}
+
+.dashboard-progress .bar {
+  position: relative;
+  z-index: 1;
+  height: 16px;
+  background: #f1f1f1;
+  border-radius: 999px;
+  margin-top: 20px;
+  overflow: hidden;
+}
+
+.dashboard-progress .bar div {
+  background: linear-gradient(90deg, var(--pink), var(--pink2));
+  border-radius: 999px;
+  box-shadow: 0 6px 16px rgba(255, 11, 95, .28);
+}
+
+.dashboard-progress .progress-card:nth-child(1):after {
+  content: "📅";
+}
+
+.dashboard-progress .progress-card:nth-child(2):after {
+  content: "🔥";
+}
+
+.dashboard-progress .progress-card:nth-child(3):after {
+  content: "🏆";
+}
+
+.dashboard-progress .progress-card:after {
+  position: absolute;
+  left: 24px;
+  bottom: 20px;
+  font-size: 42px;
+  opacity: .18;
+}
