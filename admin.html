@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>إعدادات التمارين</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+
+<body>
+  <header class="topbar">
+    <div class="brand">إعدادات البرنامج</div>
+    <nav>
+      <a href="index.html">العرض</a>
+      <a href="admin.html">الإعدادات</a>
+    </nav>
+  </header>
+
+  <main class="container">
+    <section class="hero">
+      <h1>إضافة تمرين</h1>
+      <p>النجاح يبدأ بخطوة، ابدأ التحدي الآن. 💪🔥</p>
+    </section>
+
+    <form id="exerciseForm" class="card form">
+      <input type="hidden" id="editId" />
+
+      <label>اسم التمرين</label>
+      <input id="title" required placeholder="مثال: كامل الجسم" />
+
+      <div class="grid2">
+        <div>
+          <label>الأسبوع</label>
+          <select id="week" required>
+            <option value="1">الأسبوع الأول</option>
+            <option value="2">الأسبوع الثاني</option>
+            <option value="3">الأسبوع الثالث</option>
+            <option value="4">الأسبوع الرابع</option>
+            <option value="5">الأسبوع الخامس</option>
+            <option value="6">الأسبوع السادس</option>
+            <option value="7">الأسبوع السابع</option>
+            <option value="8">الأسبوع الثامن</option>
+          </select>
+        </div>
+        <div>
+          <label>اليوم</label>
+          <select id="programDay" required>
+            <option value="1">اليوم الأول</option>
+            <option value="2">اليوم الثاني</option>
+            <option value="3">اليوم الثالث</option>
+            <option value="4">اليوم الرابع</option>
+            <option value="5">اليوم الخامس</option>
+            <option value="6">اليوم السادس</option>
+            <option value="7">اليوم السابع</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="grid2">
+        <div>
+          <label>مدة التمرين (بالدقائق)</label>
+          <input type="number" id="duration" min="1" placeholder="15" />
+        </div>
+        <div>
+          <label>نوع اليوم</label>
+          <select id="type">
+            <option value="workout">تمرين</option>
+            <option value="rest">راحة</option>
+          </select>
+        </div>
+      </div>
+
+      <label>رابط اليوتيوب</label>
+      <input id="youtube" type="url" placeholder="https://www.youtube.com/watch?v=..." />
+
+      <div id="previewBox" class="preview-box"></div>
+
+      <label>ملاحظات</label>
+      <textarea id="notes" placeholder="مثال: 3 جولات - راحة 30 ثانية"></textarea>
+
+      <div class="actions">
+        <button type="submit">حفظ</button>
+        <button type="button" id="cancelEdit" class="ghost">إلغاء التعديل</button>
+        <button type="button" id="clearAll" class="danger">حذف كل البيانات</button>
+      </div>
+    </form>
+
+    <h2>التمارين المضافة</h2>
+    <section id="adminList" class="admin-list"></section>
+  </main>
+
+  <script src="app.js"></script>
+  <script>initAdmin();</script>
+</body>
+
+</html>
