@@ -23,6 +23,13 @@
       <p>النجاح يبدأ بخطوة، ابدأ التحدي الآن. 💪🔥</p>
     </section>
 
+    <section class="card migration-card">
+      <h2>نقل التمارين القديمة</h2>
+      <p>إذا كنت أضفت تمارين سابقًا قبل Firebase، اضغط هذا الزر مرة واحدة فقط.</p>
+      <button id="migrateBtn" type="button">رفع التمارين المحلية إلى Firebase</button>
+      <div id="migrateStatus" class="small"></div>
+    </section>
+
     <form id="exerciseForm" class="card form">
       <input type="hidden" id="editId" />
 
@@ -82,7 +89,7 @@
       <div class="actions">
         <button type="submit">حفظ</button>
         <button type="button" id="cancelEdit" class="ghost">إلغاء التعديل</button>
-        <button type="button" id="clearAll" class="danger">حذف كل البيانات</button>
+        <button type="button" id="clearAll" class="danger">حذف كل التمارين من Firebase</button>
       </div>
     </form>
 
@@ -90,8 +97,7 @@
     <section id="adminList" class="admin-list"></section>
   </main>
 
-  <script src="app.js"></script>
-  <script>initAdmin();</script>
+  <script type="module" src="app.js"></script>
 </body>
 
 </html>

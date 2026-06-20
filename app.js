@@ -1,12 +1,53 @@
-const KEY = "fitness_program_v3_weeks_days";
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
+import {
+  getFirestore,
+  collection,
+  getDocs,
+  setDoc,
+  deleteDoc,
+  doc
+} from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyBhIIJTXoyI9ZowslTRGN5IDQ5qTgeuf1M",
+  authDomain: "fitness-challenge-6061e.firebaseapp.com",
+  projectId: "fitness-challenge-6061e",
+  storageBucket: "fitness-challenge-6061e.firebasestorage.app",
+  messagingSenderId: "623386176896",
+  appId: "1:623386176896:web:e621094ad6359da608a565",
+  measurementId: "G-GN16VR5B3B"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+const LOCAL_KEY = "fitness_program_v3_weeks_days";
 const DONE_KEY = "fitness_program_done_v1";
+const COLLECTION_NAME = "exercises";
 let currentWeek = 1;
+let cachedData = [];
 
 // عدل هنا عدد أيام التحدي
 const CHALLENGE_DAYS = 30;
 
-function getData() { return JSON.parse(localStorage.getItem(KEY) || "[]"); }
-function saveData(data) { localStorage.setItem(KEY, JSON.stringify(data)); }
+async function getData() {
+  const snap = await getDocs(collection(db, COLLECTION_NAME));
+  cachedData = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  return cachedData;
+}
+
+async function saveExercise(item) {
+  await setDoc(doc(db, COLLECTION_NAME, item.id), item);
+}
+
+async function deleteExercise(id) {
+  await deleteDoc(doc(db, COLLECTION_NAME, id));
+}
+
+function getLocalOldData() {
+  return JSON.parse(localStorage.getItem(LOCAL_KEY) || "[]");
+}
+
 function getDone() { return JSON.parse(localStorage.getItem(DONE_KEY) || "{}"); }
 function saveDone(done) { localStorage.setItem(DONE_KEY, JSON.stringify(done)); }
 function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2); }
@@ -129,8 +170,7 @@ function getCompletedWeeks(data, done) {
   });
 }
 
-function updateStats() {
-  const data = getData();
+function updateStats(data) {
   const done = getDone();
   const workouts = workoutOnly(data);
   const completed = workouts.filter(x => done[x.id]);
@@ -153,8 +193,7 @@ function updateStats() {
   }
 }
 
-function updateProgressBoard() {
-  const data = getData();
+function updateProgressBoard(data) {
   const done = getDone();
 
   const weekItems = data.filter(x => Number(x.week) === Number(currentWeek));
@@ -176,50 +215,52 @@ function updateProgressBoard() {
   }
 
   updateCountdown();
-  updateStats();
+  updateStats(data);
 }
 
-function toggleDone(id) {
+async function toggleDone(id) {
   const done = getDone();
   const wasDone = !!done[id];
   done[id] = !done[id];
   saveDone(done);
 
-  if (!wasDone) {
-    playDing();
-  }
+  if (!wasDone) playDing();
 
-  const data = getData();
-  const percent = calcPercent(data, done);
-  if (!wasDone && percent === 100 && workoutOnly(data).length > 0) {
+  const allData = await getData();
+  const percent = calcPercent(allData, done);
+  if (!wasDone && percent === 100 && workoutOnly(allData).length > 0) {
     setTimeout(confetti, 150);
   }
 
-  renderViewer();
+  await renderViewer();
 }
 
-function renderViewer() {
+async function renderViewer() {
   const daysBox = document.getElementById("days");
   const weekTitle = document.getElementById("weekTitle");
-  const done = getDone();
+  if (!daysBox || !weekTitle) return;
 
+  const done = getDone();
   weekTitle.textContent = weekName(currentWeek);
 
-  document.getElementById("prevWeek").onclick = () => {
+  document.getElementById("prevWeek").onclick = async () => {
     if (currentWeek > 1) currentWeek--;
-    renderViewer();
+    await renderViewer();
   };
 
-  document.getElementById("nextWeek").onclick = () => {
+  document.getElementById("nextWeek").onclick = async () => {
     currentWeek++;
-    renderViewer();
+    await renderViewer();
   };
 
-  const data = getData()
+  daysBox.innerHTML = `<div class="empty card">جاري تحميل التمارين...</div>`;
+
+  const allData = await getData();
+  updateProgressBoard(allData);
+
+  const data = allData
     .filter(x => Number(x.week) === Number(currentWeek))
     .sort((a, b) => (Number(a.programDay) - Number(b.programDay)));
-
-  updateProgressBoard();
 
   if (data.length === 0) {
     daysBox.innerHTML = `<div class="empty card">لا توجد تمارين في ${weekName(currentWeek)}. أضفها من صفحة الإعدادات.</div>`;
@@ -274,11 +315,13 @@ function renderViewer() {
     `;
   }).join("");
 
-  updateProgressBoard();
+  updateProgressBoard(allData);
 }
 
-function initAdmin() {
+async function initAdmin() {
   const form = document.getElementById("exerciseForm");
+  if (!form) return;
+
   const youtubeInput = document.getElementById("youtube");
   const previewBox = document.getElementById("previewBox");
 
@@ -288,10 +331,9 @@ function initAdmin() {
     previewBox.innerHTML = id ? `<img src="${getYoutubeThumb(url)}" alt="معاينة صورة اليوتيوب">` : "";
   });
 
-  form.addEventListener("submit", (e) => {
+  form.addEventListener("submit", async (e) => {
     e.preventDefault();
     const editId = document.getElementById("editId").value;
-    let data = getData();
 
     const item = {
       id: editId || uid(),
@@ -304,14 +346,12 @@ function initAdmin() {
       notes: document.getElementById("notes").value.trim()
     };
 
-    if (editId) data = data.map(x => x.id === editId ? item : x);
-    else data.push(item);
+    await saveExercise(item);
 
-    saveData(data);
     form.reset();
     previewBox.innerHTML = "";
     document.getElementById("editId").value = "";
-    renderAdminList();
+    await renderAdminList();
   });
 
   document.getElementById("cancelEdit").onclick = () => {
@@ -320,21 +360,49 @@ function initAdmin() {
     document.getElementById("editId").value = "";
   };
 
-  document.getElementById("clearAll").onclick = () => {
-    if (confirm("هل تريد حذف كل البيانات؟")) {
-      localStorage.removeItem(KEY);
-      localStorage.removeItem(DONE_KEY);
-      localStorage.removeItem("challenge_start_date");
-      renderAdminList();
+  document.getElementById("clearAll").onclick = async () => {
+    if (confirm("هل تريد حذف كل التمارين من Firebase؟")) {
+      const data = await getData();
+      for (const item of data) await deleteExercise(item.id);
+      await renderAdminList();
     }
   };
 
-  renderAdminList();
+  const migrateBtn = document.getElementById("migrateBtn");
+  if (migrateBtn) {
+    migrateBtn.onclick = migrateLocalToFirebase;
+  }
+
+  await renderAdminList();
 }
 
-function renderAdminList() {
+async function migrateLocalToFirebase() {
+  const status = document.getElementById("migrateStatus");
+  const localData = getLocalOldData();
+
+  if (!localData.length) {
+    status.textContent = "لا توجد تمارين محلية قديمة في هذا المتصفح.";
+    return;
+  }
+
+  if (!confirm(`سيتم رفع ${localData.length} تمرين إلى Firebase. هل تريد المتابعة؟`)) return;
+
+  for (const item of localData) {
+    if (!item.id) item.id = uid();
+    await saveExercise(item);
+  }
+
+  status.textContent = `تم رفع ${localData.length} تمرين إلى Firebase بنجاح.`;
+  await renderAdminList();
+}
+
+async function renderAdminList() {
   const list = document.getElementById("adminList");
-  const data = getData().sort((a, b) =>
+  if (!list) return;
+
+  list.innerHTML = `<div class="empty card">جاري تحميل التمارين...</div>`;
+
+  const data = (await getData()).sort((a, b) =>
     Number(a.week) - Number(b.week) || Number(a.programDay) - Number(b.programDay)
   );
 
@@ -353,15 +421,16 @@ function renderAdminList() {
       </div>
       <div class="actions">
         <button onclick="editItem('${item.id}')">تعديل</button>
-        <button class="danger" onclick="deleteItem('${item.id}')">حذف</button>
+        <button class="danger" onclick="deleteItemFromAdmin('${item.id}')">حذف</button>
       </div>
     </div>
   `).join("");
 }
 
 function editItem(id) {
-  const item = getData().find(x => x.id === id);
+  const item = cachedData.find(x => x.id === id);
   if (!item) return;
+
   document.getElementById("editId").value = item.id;
   document.getElementById("title").value = item.title;
   document.getElementById("week").value = item.week;
@@ -374,15 +443,15 @@ function editItem(id) {
   window.scrollTo({ top: 0, behavior: "smooth" });
 }
 
-function deleteItem(id) {
+async function deleteItemFromAdmin(id) {
   if (!confirm("حذف هذا التمرين؟")) return;
-  saveData(getData().filter(x => x.id !== id));
+  await deleteExercise(id);
 
   const done = getDone();
   delete done[id];
   saveDone(done);
 
-  renderAdminList();
+  await renderAdminList();
 }
 
 function placeholder() {
@@ -399,4 +468,16 @@ function escapeHtml(text) {
   return String(text || "").replace(/[&<>"']/g, m => ({
     "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;"
   }[m]));
+}
+
+window.toggleDone = toggleDone;
+window.editItem = editItem;
+window.deleteItemFromAdmin = deleteItemFromAdmin;
+
+if (document.getElementById("days")) {
+  renderViewer();
+}
+
+if (document.getElementById("exerciseForm")) {
+  initAdmin();
 }
