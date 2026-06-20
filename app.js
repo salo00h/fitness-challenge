@@ -505,3 +505,9 @@ if (document.getElementById("days")) {
 if (document.getElementById("exerciseForm")) {
   initAdmin();
 }
+
+if (document.getElementById("doneCount")) {
+  getData().then(data => {
+    updateProgressBoard(data);
+  });
+}
