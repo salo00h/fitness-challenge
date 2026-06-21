@@ -307,19 +307,28 @@ async function renderViewer() {
     .sort((a, b) => Number(a.programDay) - Number(b.programDay));
 
   if (data.length === 0) {
-    daysBox.innerHTML = `<div class="empty card">لا توجد تمارين في ${weekName(currentWeek)}. أضفها من صفحة الإعدادات.</div>`;
+    daysBox.innerHTML = `
+      <div class="empty card">
+        لا توجد تمارين في ${weekName(currentWeek)}.
+        أضفها من صفحة الإعدادات.
+      </div>
+    `;
     return;
   }
 
   const grouped = {};
+
   data.forEach(item => {
-    if (!grouped[item.programDay]) grouped[item.programDay] = [];
+    if (!grouped[item.programDay]) {
+      grouped[item.programDay] = [];
+    }
     grouped[item.programDay].push(item);
   });
 
   daysBox.innerHTML = Object.keys(grouped)
     .sort((a, b) => a - b)
     .map(day => {
+
       const items = grouped[day];
       const allRest = items.every(i => i.type === "rest");
       const dayPercent = calcPercent(items, done);
@@ -327,58 +336,115 @@ async function renderViewer() {
 
       return `
         <article class="day-card">
+
           <div class="day-head">
             <div>
+
               <h2>${dayName(day)}</h2>
-              <span class="day-progress">إنجاز اليوم: ${dayPercent}%</span>
+
+              <span class="day-progress">
+                إنجاز اليوم: ${dayPercent}%
+              </span>
+
+              <div class="day-progress-bar">
+                <div
+                  class="day-progress-fill"
+                  style="width:${dayPercent}%">
+                </div>
+              </div>
+
             </div>
-            <span class="week-label">${weekName(currentWeek)}</span>
+
+            <span class="week-label">
+              ${weekName(currentWeek)}
+            </span>
           </div>
 
           ${allRest
           ? `
-                <div class="rest">
-                  <div>يوم راحة 🌸</div>
-                  <button
-                    class="done-btn ${done[restItem.id] ? "is-done" : ""}"
-                    onclick="toggleDone('${restItem.id}')">
-                    ${done[restItem.id] ? "تم الإنجاز ✓" : "تم إنجاز يوم الراحة"}
-                  </button>
-                </div>
-              `
+              <div class="rest">
+                <div>يوم راحة 🌸</div>
+
+                <button
+                  class="done-btn ${done[restItem.id] ? "is-done" : ""}"
+                  onclick="toggleDone('${restItem.id}')">
+
+                  ${done[restItem.id]
+            ? "تم الإنجاز ✓"
+            : "تم إنجاز يوم الراحة"}
+
+                </button>
+              </div>
+            `
           : ""
         }
 
           <div class="exercises">
-            ${items
-          .map(item =>
-            item.type === "rest"
-              ? ""
-              : `
-                    <div class="exercise ${done[item.id] ? "completed" : ""}">
-                      <a href="${item.youtube || "#"}" target="_blank" rel="noopener">
-                        <div class="image-wrap">
-                          <img src="${getYoutubeThumb(item.youtube)}" alt="${escapeHtml(item.title)}">
-                          ${done[item.id] ? `<span class="done-ribbon">مكتمل ✓</span>` : ""}
-                        </div>
-                      </a>
 
-                      <div class="body">
-                        <span class="badge">${item.duration ? item.duration + " دقيقة" : "بدون مدة"}</span>
-                        <h3>${escapeHtml(item.title)}</h3>
-                        ${item.notes ? `<div class="notes">${escapeHtml(item.notes)}</div>` : ""}
+            ${items.map(item =>
 
-                        <button
-                          class="done-btn ${done[item.id] ? "is-done" : ""}"
-                          onclick="toggleDone('${item.id}')">
-                          ${done[item.id] ? "تم الإنجاز ✓" : "تم إنجاز التمرين"}
-                        </button>
-                      </div>
+          item.type === "rest"
+            ? ""
+
+            : `
+
+                <div class="exercise ${done[item.id] ? "completed" : ""}">
+
+                  <a
+                    href="${item.youtube || "#"}"
+                    target="_blank"
+                    rel="noopener">
+
+                    <div class="image-wrap">
+
+                      <img
+                        src="${getYoutubeThumb(item.youtube)}"
+                        alt="${escapeHtml(item.title)}">
+
+                      ${done[item.id]
+              ? `<span class="done-ribbon">مكتمل ✓</span>`
+              : ""
+            }
+
                     </div>
-                  `
-          )
-          .join("")}
+
+                  </a>
+
+                  <div class="body">
+
+                    <span class="badge">
+                      ${item.duration
+              ? item.duration + " دقيقة"
+              : "بدون مدة"}
+                    </span>
+
+                    <h3>${escapeHtml(item.title)}</h3>
+
+                    ${item.notes
+              ? `<div class="notes">${escapeHtml(item.notes)}</div>`
+              : ""
+            }
+
+                    <button
+                      class="done-btn ${done[item.id] ? "is-done" : ""}"
+                      onclick="toggleDone('${item.id}')">
+
+                      ${done[item.id]
+              ? "تم الإنجاز ✓"
+              : "تم إنجاز التمرين"}
+
+                    </button>
+
+                  </div>
+
+                </div>
+
+              `
+
+        ).join("")}
+
           </div>
+
         </article>
       `;
     })
