@@ -35,6 +35,9 @@ let currentDone = {};
 
 // عدل هنا عدد أيام التحدي
 const CHALLENGE_DAYS = 30;
+const SPECIAL_START_DAY = 4;
+const DELAY_PENALTY = 10;
+const COMMITMENT_START_DATE = "2026-06-24";
 
 async function getData() {
   const snap = await getDocs(collection(db, COLLECTION_NAME));
@@ -168,7 +171,7 @@ function renderUserBar() {
 
 function calcUserStats(data, done) {
   const workouts = workoutOnly(data);
-  const completed = workouts.filter(x => done[x.id]);
+  const completed = workouts.filter(x => isDone(done[x.id]));
   return {
     percent: calcPercent(workouts, done),
     completed: completed.length,
@@ -209,10 +212,10 @@ async function renderParticipantsBoard(data) {
     <h2>👭 تحدي البنات</h2>
     <div class="participants-grid">
       ${users.map(user => {
-        const stats = calcUserStats(data, user.done || {});
-        const isMe = normalizeUserName(user.name) === currentUser;
+    const stats = calcUserStats(data, user.done || {});
+    const isMe = normalizeUserName(user.name) === currentUser;
 
-        return `
+    return `
           <article class="participant-card ${isMe ? "is-me" : ""}">
             <div class="participant-head">
               <strong>${escapeHtml(user.name)}</strong>
@@ -233,7 +236,7 @@ async function renderParticipantsBoard(data) {
             </div>
           </article>
         `;
-      }).join("")}
+  }).join("")}
     </div>
   `;
 }
@@ -277,10 +280,15 @@ function workoutOnly(data) {
   return data;
 }
 
+function isDone(value) {
+  return value === true ||
+    (value && value.completed);
+}
+
 function calcPercent(items, done) {
   const workouts = workoutOnly(items);
   if (workouts.length === 0) return 0;
-  const complete = workouts.filter(x => done[x.id]).length;
+  const complete = workouts.filter(x => isDone(done[x.id])).length;
   return Math.round((complete / workouts.length) * 100);
 }
 
@@ -332,6 +340,73 @@ function confetti() {
   }
 }
 
+function getProgramAbsoluteDay(item) {
+  return ((Number(item.week) - 1) * 7) + Number(item.programDay);
+}
+
+function getExpectedDate(item) {
+  const d = new Date(COMMITMENT_START_DATE);
+
+  const absoluteDay = getProgramAbsoluteDay(item);
+
+  if (absoluteDay <= SPECIAL_START_DAY) {
+    return new Date(COMMITMENT_START_DATE);
+  }
+
+  d.setDate(
+    d.getDate() +
+    (absoluteDay - SPECIAL_START_DAY)
+  );
+
+  return d;
+}
+
+function calcCommitmentPercent(data, done) {
+  const workouts = workoutOnly(data);
+
+  let score = 0;
+  let total = 0;
+
+  for (const item of workouts) {
+
+    const absoluteDay = getProgramAbsoluteDay(item);
+
+    if (absoluteDay <= 3) {
+      score += 100;
+      total += 100;
+      continue;
+    }
+
+    total += 100;
+
+    const record = done[item.id];
+
+    if (!record || !record.completedAt) {
+      continue;
+    }
+
+    const completedAt = new Date(record.completedAt);
+    const expectedDate = getExpectedDate(item);
+
+    const delayDays = Math.max(
+      0,
+      Math.floor(
+        (completedAt - expectedDate) /
+        (1000 * 60 * 60 * 24)
+      )
+    );
+
+    score += Math.max(
+      0,
+      100 - (delayDays * DELAY_PENALTY)
+    );
+  }
+
+  return total
+    ? Math.round((score / total))
+    : 100;
+}
+
 function challengeStartDate() {
   let start = localStorage.getItem("challenge_start_date");
   if (!start) {
@@ -365,7 +440,7 @@ function updateCountdown() {
       Number(x.programDay) === day
     );
 
-    return dayItems.length > 0 && dayItems.every(x => done[x.id]);
+    return dayItems.length > 0 && dayItems.every(x => isDone(done[x.id]));
   }).length;
 
   const daysLeft = Math.max(0, totalDays - completedDays);
@@ -377,16 +452,18 @@ function getCompletedWeeks(data, done) {
   const weeks = [...new Set(data.map(x => Number(x.week)))].sort((a, b) => a - b);
   return weeks.filter(week => {
     const weekItems = workoutOnly(data.filter(x => Number(x.week) === week));
-    return weekItems.length > 0 && weekItems.every(x => done[x.id]);
+    return weekItems.length > 0 && weekItems.every(x => isDone(done[x.id]));
   });
 }
 
 function updateStats(data) {
   const done = getDone();
   const workouts = workoutOnly(data);
-  const completed = workouts.filter(x => done[x.id]);
+  const completed = workouts.filter(x => isDone(done[x.id]));
   const minutes = completed.reduce((sum, x) => sum + (Number(x.duration) || 0), 0);
   const completedWeeks = getCompletedWeeks(data, done);
+  const commitmentPercent =
+    calcCommitmentPercent(data, done);
 
   const doneCount = document.getElementById("doneCount");
   const doneMinutes = document.getElementById("doneMinutes");
@@ -395,6 +472,13 @@ function updateStats(data) {
   if (doneCount) doneCount.textContent = completed.length;
   if (doneMinutes) doneMinutes.textContent = minutes;
   if (doneWeeks) doneWeeks.textContent = completedWeeks.length;
+  const doneWeeksBox =
+    document.getElementById("commitmentPercent");
+
+  if (doneWeeksBox) {
+    doneWeeksBox.textContent =
+      commitmentPercent + "%";
+  }
 
   const weekStars = document.getElementById("weekStars");
   if (weekStars) {
@@ -433,9 +517,16 @@ async function toggleDone(id) {
   const scrollY = window.scrollY;
 
   const done = getDone();
-  const wasDone = !!done[id];
+  const wasDone = isDone(done[id]);
 
-  done[id] = !done[id];
+  if (done[id]) {
+    delete done[id];
+  } else {
+    done[id] = {
+      completed: true,
+      completedAt: new Date().toISOString()
+    };
+  }
   await saveDone(done);
 
   if (!wasDone) {
@@ -579,7 +670,7 @@ async function renderViewer() {
 
             : `
 
-                <div class="exercise ${done[item.id] ? "completed" : ""}">
+                <div class="exercise ${isDone(done[item.id]) ? "completed" : ""}">
 
                   <a
                     href="${item.youtube || "#"}"
@@ -592,7 +683,7 @@ async function renderViewer() {
                         src="${getYoutubeThumb(item.youtube)}"
                         alt="${escapeHtml(item.title)}">
 
-                      ${done[item.id]
+                      ${isDone(done[item.id])
               ? `<span class="done-ribbon">مكتمل ✓</span>`
               : ""
             }
@@ -617,10 +708,10 @@ async function renderViewer() {
             }
 
                     <button
-                      class="done-btn ${done[item.id] ? "is-done" : ""}"
+                      class="done-btn ${isDone(done[item.id]) ? "is-done" : ""}"
                       onclick="toggleDone('${item.id}')">
 
-                      ${done[item.id]
+                      ${isDone(done[item.id])
               ? "تم الإنجاز ✓"
               : "تم إنجاز التمرين"}
 
