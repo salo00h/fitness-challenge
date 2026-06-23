@@ -3,6 +3,7 @@ import {
   getFirestore,
   collection,
   getDocs,
+  getDoc,
   setDoc,
   deleteDoc,
   doc
@@ -23,9 +24,14 @@ const db = getFirestore(app);
 
 const LOCAL_KEY = "fitness_program_v3_weeks_days";
 const DONE_KEY = "fitness_program_done_v1";
+const USER_KEY = "fitness_current_user_v1";
+const MIGRATION_KEY = "fitness_done_migrated_to_firebase_v1";
 const COLLECTION_NAME = "exercises";
+const USERS_COLLECTION = "participants";
 let currentWeek = 1;
 let cachedData = [];
+let currentUser = null;
+let currentDone = {};
 
 // عدل هنا عدد أيام التحدي
 const CHALLENGE_DAYS = 30;
@@ -44,9 +50,194 @@ async function deleteExercise(id) {
   await deleteDoc(doc(db, COLLECTION_NAME, id));
 }
 
+function normalizeUserName(name) {
+  return String(name || "")
+    .trim()
+    .replace(/\s+/g, " ")
+    .slice(0, 40);
+}
 
-function getDone() { return JSON.parse(localStorage.getItem(DONE_KEY) || "{}"); }
-function saveDone(done) { localStorage.setItem(DONE_KEY, JSON.stringify(done)); }
+function userDocId(name) {
+  return encodeURIComponent(normalizeUserName(name).toLowerCase());
+}
+
+function getLocalDone() {
+  try {
+    return JSON.parse(localStorage.getItem(DONE_KEY) || "{}");
+  } catch (e) {
+    return {};
+  }
+}
+
+function getDone() { return currentDone || {}; }
+
+async function saveDone(done) {
+  currentDone = { ...done };
+  localStorage.setItem(DONE_KEY, JSON.stringify(currentDone));
+
+  if (!currentUser) return;
+
+  await setDoc(doc(db, USERS_COLLECTION, userDocId(currentUser)), {
+    name: currentUser,
+    done: currentDone,
+    updatedAt: new Date().toISOString()
+  }, { merge: true });
+}
+
+function showUserLogin() {
+  return new Promise(resolve => {
+    const old = document.getElementById("userLoginOverlay");
+    if (old) old.remove();
+
+    const overlay = document.createElement("div");
+    overlay.id = "userLoginOverlay";
+    overlay.className = "login-overlay";
+    overlay.innerHTML = `
+      <form class="login-card">
+        <div class="login-icon">🔥</div>
+        <h2>اختاري اسمك</h2>
+        <p>سيتم حفظ تقدمك في Firebase، وستشاهدين تقدم المنافسة الأخرى.</p>
+        <input id="loginName" required placeholder="مثال: سارة" autocomplete="name">
+        <button type="submit">دخول للتحدي</button>
+      </form>
+    `;
+
+    document.body.appendChild(overlay);
+
+    overlay.querySelector("form").addEventListener("submit", e => {
+      e.preventDefault();
+      const name = normalizeUserName(document.getElementById("loginName").value);
+      if (!name) return;
+      overlay.remove();
+      resolve(name);
+    });
+  });
+}
+
+async function ensureCurrentUser() {
+  currentUser = normalizeUserName(localStorage.getItem(USER_KEY));
+
+  if (!currentUser) {
+    currentUser = await showUserLogin();
+    localStorage.setItem(USER_KEY, currentUser);
+  }
+
+  const ref = doc(db, USERS_COLLECTION, userDocId(currentUser));
+  const snap = await getDoc(ref);
+  const firebaseDone = snap.exists() ? (snap.data().done || {}) : {};
+  const localDone = getLocalDone();
+  const migrationKey = `${MIGRATION_KEY}_${userDocId(currentUser)}`;
+
+  // أول دخول بعد التحديث: ندمج إنجاز المتصفح القديم مع إنجاز Firebase حتى لا يضيع التقدم السابق.
+  currentDone = localStorage.getItem(migrationKey)
+    ? firebaseDone
+    : { ...firebaseDone, ...localDone };
+
+  await saveDone(currentDone);
+  localStorage.setItem(migrationKey, "yes");
+
+  renderUserBar();
+}
+
+function renderUserBar() {
+  if (!currentUser || document.getElementById("currentUserBar")) return;
+
+  const main = document.querySelector("main.container");
+  if (!main) return;
+
+  const box = document.createElement("section");
+  box.id = "currentUserBar";
+  box.className = "user-bar card";
+  box.innerHTML = `
+    <div>
+      <span>المتسابقة الحالية</span>
+      <strong>${escapeHtml(currentUser)}</strong>
+    </div>
+    <button type="button" class="ghost" id="switchUserBtn">تغيير الاسم</button>
+  `;
+
+  const hero = main.querySelector(".hero, .stats-hero");
+  if (hero) hero.insertAdjacentElement("afterend", box);
+  else main.prepend(box);
+
+  document.getElementById("switchUserBtn").onclick = () => {
+    localStorage.removeItem(USER_KEY);
+    location.reload();
+  };
+}
+
+function calcUserStats(data, done) {
+  const workouts = workoutOnly(data);
+  const completed = workouts.filter(x => done[x.id]);
+  return {
+    percent: calcPercent(workouts, done),
+    completed: completed.length,
+    total: workouts.length,
+    minutes: completed.reduce((sum, x) => sum + (Number(x.duration) || 0), 0),
+    weekPercent: calcPercent(data.filter(x => Number(x.week) === Number(currentWeek)), done),
+    completedWeeks: getCompletedWeeks(data, done).length
+  };
+}
+
+async function renderParticipantsBoard(data) {
+  const main = document.querySelector("main.container");
+  if (!main || (!document.getElementById("days") && !document.getElementById("doneCount"))) return;
+
+  let board = document.getElementById("participantsBoard");
+  if (!board) {
+    board = document.createElement("section");
+    board.id = "participantsBoard";
+    board.className = "participants-board";
+
+    const after = document.getElementById("currentUserBar") || main.querySelector(".hero, .stats-hero");
+    if (after) after.insertAdjacentElement("afterend", board);
+    else main.prepend(board);
+  }
+
+  const snap = await getDocs(collection(db, USERS_COLLECTION));
+  const users = snap.docs
+    .map(d => d.data())
+    .filter(u => u.name)
+    .sort((a, b) => String(a.name).localeCompare(String(b.name), "ar"));
+
+  if (users.length === 0) {
+    board.innerHTML = "";
+    return;
+  }
+
+  board.innerHTML = `
+    <h2>👭 تحدي البنات</h2>
+    <div class="participants-grid">
+      ${users.map(user => {
+        const stats = calcUserStats(data, user.done || {});
+        const isMe = normalizeUserName(user.name) === currentUser;
+
+        return `
+          <article class="participant-card ${isMe ? "is-me" : ""}">
+            <div class="participant-head">
+              <strong>${escapeHtml(user.name)}</strong>
+              <span>${isMe ? "أنتِ" : "المنافسة"}</span>
+            </div>
+
+            <div class="participant-percent">${stats.percent}%</div>
+
+            <div class="bar">
+              <div style="width:${stats.percent}%"></div>
+            </div>
+
+            <div class="participant-meta">
+              <span>✅ ${stats.completed} / ${stats.total} تمرين</span>
+              <span>⏱ ${stats.minutes} دقيقة</span>
+              <span>⭐ ${stats.completedWeeks} أسبوع</span>
+              <span>📅 الأسبوع الحالي ${stats.weekPercent}%</span>
+            </div>
+          </article>
+        `;
+      }).join("")}
+    </div>
+  `;
+}
+
 function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2); }
 
 function weekName(n) { return `الأسبوع ${toArabicOrdinal(n)}`; }
@@ -245,7 +436,7 @@ async function toggleDone(id) {
   const wasDone = !!done[id];
 
   done[id] = !done[id];
-  saveDone(done);
+  await saveDone(done);
 
   if (!wasDone) {
     playDing();
@@ -451,6 +642,7 @@ async function renderViewer() {
     .join("");
 
   updateProgressBoard(allData);
+  await renderParticipantsBoard(allData);
 }
 
 async function initAdmin() {
@@ -569,7 +761,7 @@ async function deleteItemFromAdmin(id) {
 
   const done = getDone();
   delete done[id];
-  saveDone(done);
+  await saveDone(done);
 
   await renderAdminList();
 }
@@ -594,16 +786,25 @@ window.toggleDone = toggleDone;
 window.editItem = editItem;
 window.deleteItemFromAdmin = deleteItemFromAdmin;
 
-if (document.getElementById("days")) {
-  renderViewer();
-}
+async function bootstrap() {
+  if (document.getElementById("exerciseForm")) {
+    initAdmin();
+    return;
+  }
 
-if (document.getElementById("exerciseForm")) {
-  initAdmin();
-}
+  if (document.getElementById("days") || document.getElementById("doneCount")) {
+    await ensureCurrentUser();
+  }
 
-if (document.getElementById("doneCount")) {
-  getData().then(data => {
+  if (document.getElementById("days")) {
+    await renderViewer();
+  }
+
+  if (document.getElementById("doneCount")) {
+    const data = await getData();
     updateProgressBoard(data);
-  });
+    await renderParticipantsBoard(data);
+  }
 }
+
+bootstrap();

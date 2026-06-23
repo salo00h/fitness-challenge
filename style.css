@@ -903,3 +903,156 @@ textarea {
       var(--pink2));
   transition: width .4s ease;
 }
+/* نظام المتسابقات */
+.login-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 99999;
+  background: rgba(255, 226, 236, .72);
+  backdrop-filter: blur(14px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.login-card {
+  width: min(430px, 100%);
+  background: white;
+  border: 1px solid var(--border);
+  border-radius: 28px;
+  padding: 28px;
+  text-align: center;
+  box-shadow: 0 24px 70px rgba(255, 11, 95, .22);
+}
+
+.login-icon {
+  font-size: 46px;
+  margin-bottom: 8px;
+}
+
+.login-card h2 {
+  margin: 0 0 8px;
+  color: var(--pink);
+  font-size: 30px;
+}
+
+.login-card p {
+  margin: 0 0 18px;
+  color: var(--muted);
+  line-height: 1.8;
+}
+
+.login-card input {
+  text-align: center;
+  font-weight: bold;
+  font-size: 18px;
+}
+
+.login-card button {
+  width: 100%;
+  margin-top: 14px;
+}
+
+.user-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  margin-bottom: 18px;
+}
+
+.user-bar span {
+  display: block;
+  color: var(--muted);
+  font-weight: bold;
+  margin-bottom: 5px;
+}
+
+.user-bar strong {
+  color: var(--pink);
+  font-size: 24px;
+}
+
+.participants-board {
+  margin: 18px 0 24px;
+}
+
+.participants-board h2 {
+  margin: 0 0 14px;
+}
+
+.participants-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(245px, 1fr));
+  gap: 14px;
+}
+
+.participant-card {
+  background: white;
+  border: 1px solid var(--border);
+  border-radius: 24px;
+  padding: 18px;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, .06);
+}
+
+.participant-card.is-me {
+  border-color: #ffd1df;
+  background: linear-gradient(135deg, #fff, #fff5f8);
+}
+
+.participant-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.participant-head strong {
+  font-size: 22px;
+  color: var(--text);
+}
+
+.participant-head span {
+  color: var(--pink);
+  background: var(--soft);
+  padding: 6px 11px;
+  border-radius: 999px;
+  font-weight: bold;
+  font-size: 12px;
+}
+
+.participant-percent {
+  color: var(--pink);
+  font-size: 44px;
+  font-weight: bold;
+  margin-top: 14px;
+}
+
+.participant-meta {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.participant-meta span {
+  background: #fafafa;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 9px;
+  color: var(--muted);
+  font-weight: bold;
+  font-size: 13px;
+}
+
+@media(max-width:800px) {
+  .user-bar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .participant-meta {
+    grid-template-columns: 1fr;
+  }
+}
