@@ -362,20 +362,17 @@ function getExpectedDate(item) {
 }
 
 function calcCommitmentPercent(data, done) {
-  const workouts = workoutOnly(data);
+
+  const completedRecords = Object.values(done)
+    .filter(x => x && x.completedAt);
+
+  if (completedRecords.length === 0) {
+    return 100;
+  }
 
   let score = 0;
-  let total = 0;
 
-  for (const item of workouts) {
-
-    const absoluteDay = getProgramAbsoluteDay(item);
-
-    if (absoluteDay <= 3) {
-      score += 100;
-      total += 100;
-      continue;
-    }
+  for (const item of data) {
 
     const record = done[item.id];
 
@@ -383,7 +380,12 @@ function calcCommitmentPercent(data, done) {
       continue;
     }
 
-    total += 100;
+    const absoluteDay = getProgramAbsoluteDay(item);
+
+    if (absoluteDay <= 3) {
+      score += 100;
+      continue;
+    }
 
     const completedAt = new Date(record.completedAt);
     const expectedDate = getExpectedDate(item);
@@ -398,13 +400,13 @@ function calcCommitmentPercent(data, done) {
 
     score += Math.max(
       0,
-      100 - (delayDays * DELAY_PENALTY)
+      100 - delayDays * DELAY_PENALTY
     );
   }
 
-  return total
-    ? Math.round((score / total))
-    : 100;
+  return Math.round(
+    score / completedRecords.length
+  );
 }
 
 function challengeStartDate() {
