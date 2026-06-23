@@ -377,13 +377,13 @@ function calcCommitmentPercent(data, done) {
       continue;
     }
 
-    total += 100;
-
     const record = done[item.id];
 
     if (!record || !record.completedAt) {
       continue;
     }
+
+    total += 100;
 
     const completedAt = new Date(record.completedAt);
     const expectedDate = getExpectedDate(item);
