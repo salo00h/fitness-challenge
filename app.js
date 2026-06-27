@@ -59,6 +59,7 @@ const warnedDefaultStartDates = new Set();
 // عدل هنا عدد أيام التحدي
 const CHALLENGE_DAYS = 30;
 
+// Challenge Meta: بيانات التحديات محفوظة في نفس collection التمارين كوثائق type=challenge-meta.
 async function getData() {
   const snap = await getDocs(collection(db, COLLECTION_NAME));
   const docs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
@@ -80,6 +81,7 @@ async function deleteExercise(id) {
   await deleteDoc(doc(db, COLLECTION_NAME, id));
 }
 
+// Challenge Meta
 function challengeMetaId(challenge) {
   return `challenge_meta_${Number(challenge) || 1}`;
 }
@@ -128,6 +130,7 @@ function userDocId(name) {
   return encodeURIComponent(normalizeUserName(name).toLowerCase());
 }
 
+// Auth
 function isAuthStoredFor(name) {
   return normalizeUserName(name) && localStorage.getItem(AUTH_KEY) === "true";
 }
@@ -258,6 +261,7 @@ async function saveDone(done) {
   }, { merge: true });
 }
 
+// Auth
 function showUserLogin(prefillName = "") {
   return new Promise(resolve => {
     const old = document.getElementById("userLoginOverlay");
@@ -470,6 +474,7 @@ function showUserLogin(prefillName = "") {
   });
 }
 
+// Admin Lock
 function isAdminUnlocked() {
   try {
     return sessionStorage.getItem(ADMIN_SESSION_KEY) === "yes";
@@ -538,6 +543,7 @@ function ensureAdminAccess() {
   });
 }
 
+// Auth
 async function ensureCurrentUser() {
   const savedUser = normalizeUserName(localStorage.getItem(USER_KEY));
   const hasAuth = isAuthStoredFor(savedUser);
@@ -889,6 +895,8 @@ function getYoutubeThumb(url) {
   return `https://img.youtube.com/vi/${id}/hqdefault.jpg`;
 }
 
+// Progress Calculations
+// حاليًا أيام الراحة محسوبة ضمن الإنجاز، لا تغيّرها إلا إذا تغير منطق التحدي.
 function workoutOnly(data) {
   return data;
 }
@@ -1087,6 +1095,7 @@ function upgradeLegacyDoneRecords(done) {
   return upgraded;
 }
 
+// Progress Calculations
 function calcCompletionPercent(items, done) {
   const workouts = workoutOnly(items);
   if (workouts.length === 0) return 0;
@@ -1094,6 +1103,7 @@ function calcCompletionPercent(items, done) {
   return Math.round((complete / workouts.length) * 100);
 }
 
+// Commitment Calculations
 function calcCommitmentPercent(items, done) {
   const completedItems = workoutOnly(items).filter(item => isDone(done[item.id]));
   if (completedItems.length === 0) return 100;
@@ -1209,6 +1219,7 @@ function getDailyQuote(date = new Date()) {
   return DAILY_QUOTES[Math.abs(dayIndex) % DAILY_QUOTES.length];
 }
 
+// Rendering
 function renderDailyQuote() {
   let box = document.getElementById("dailyQuote");
   if (!box) {
@@ -2109,6 +2120,7 @@ async function toggleDone(id) {
   }
 }
 
+// Rendering
 async function renderViewer(options = {}) {
   const {
     refreshData = true,
@@ -2452,6 +2464,7 @@ function editChallengeMeta(challenge) {
   if (box) box.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
+// Admin
 function initChallengeMetaAdmin() {
   const form = document.getElementById("challengeMetaForm");
   if (!form) return;
@@ -2522,6 +2535,7 @@ function initChallengeMetaAdmin() {
   fillChallengeMetaForm(select.value || 1);
 }
 
+// Admin
 async function initAdmin() {
   const form = document.getElementById("exerciseForm");
   if (!form) return;
