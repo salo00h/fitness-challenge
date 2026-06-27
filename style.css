@@ -1060,8 +1060,13 @@ textarea {
 /* بوكسات التحديات المتعددة */
 .days {
   display: grid;
-  grid-template-columns: 1fr;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
   gap: 24px;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  padding: 0;
 }
 
 .challenge-box {
@@ -1071,12 +1076,20 @@ textarea {
   border-color: #ffd1df;
 }
 
+.challenge-box.is-open {
+  grid-column: 1 / -1;
+}
+
 .challenge-head {
   display: grid;
-  grid-template-columns: 1fr 220px;
+  grid-template-columns: 1fr;
   gap: 18px;
   align-items: center;
   margin-bottom: 18px;
+}
+
+.challenge-box.is-open .challenge-head {
+  grid-template-columns: 1fr 220px;
 }
 
 .challenge-kicker {
@@ -1091,6 +1104,10 @@ textarea {
 
 .challenge-head h2 {
   margin: 0 0 6px;
+  font-size: 28px;
+}
+
+.challenge-box.is-open .challenge-head h2 {
   font-size: 32px;
 }
 
@@ -1119,6 +1136,32 @@ textarea {
   font-weight: bold;
 }
 
+.challenge-enter-btn {
+  width: 100%;
+  margin-top: 6px;
+  min-height: 50px;
+  background: linear-gradient(135deg, var(--pink), var(--pink2));
+  box-shadow: 0 12px 26px rgba(255, 11, 95, .22);
+}
+
+.challenge-actions {
+  display: flex;
+  justify-content: flex-start;
+  margin: 0 0 14px;
+}
+
+.challenge-back-btn {
+  background: white;
+  color: var(--pink);
+  border: 1px solid #ffd1df;
+  box-shadow: 0 10px 22px rgba(255, 11, 95, .1);
+}
+
+.challenge-box:not(.is-open) .challenge-week-nav,
+.challenge-box:not(.is-open) .challenge-days {
+  display: none;
+}
+
 .challenge-week-nav {
   background: white;
   border: 1px solid var(--border);
@@ -1139,6 +1182,10 @@ textarea {
 
 @media(max-width:900px) {
   .challenge-head {
+    grid-template-columns: 1fr;
+  }
+
+  .challenge-box.is-open .challenge-head {
     grid-template-columns: 1fr;
   }
 
