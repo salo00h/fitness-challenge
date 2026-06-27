@@ -35,6 +35,28 @@ export function getTodayAbsoluteDay(challenge) {
   return Math.floor((today - start) / DAY_MS) + 1;
 }
 
+export function getMissionItemsForChallenge(data, challenge, done = {}) {
+  const todayAbsoluteDay = getTodayAbsoluteDay(challenge);
+  const challengeItems = data.filter(item => challengeNumber(item) === Number(challenge));
+  const sortItems = items => items
+    .slice()
+    .sort((a, b) => String(a.title || "").localeCompare(String(b.title || ""), "ar"));
+
+  const todayItems = challengeItems.filter(item => getProgramAbsoluteDay(item) === todayAbsoluteDay);
+  if (todayItems.length > 0) return sortItems(todayItems);
+
+  const absoluteDays = [...new Set(challengeItems.map(getProgramAbsoluteDay).filter(Boolean))]
+    .sort((a, b) => a - b);
+
+  for (const absoluteDay of absoluteDays) {
+    const dayItems = challengeItems.filter(item => getProgramAbsoluteDay(item) === absoluteDay);
+    if (isFutureProgramDayItems(dayItems)) continue;
+    if (!dayItems.every(item => isDone(done[item.id]))) return sortItems(dayItems);
+  }
+
+  return [];
+}
+
 export function getChallengeTotalDays(data, challenge) {
   const days = data
     .filter(item => challengeNumber(item) === Number(challenge))

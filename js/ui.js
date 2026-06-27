@@ -1,8 +1,8 @@
 import { AVATARS, DAILY_QUOTES, DAY_MS, THEME_KEY } from "./constants.js";
 import { state } from "./state.js";
 import { challengeName } from "./challengeMeta.js";
-import { getTodayAbsoluteDay, isFutureProgramDayItems } from "./commitment.js";
-import { escapeHtml, getProgramAbsoluteDay, getProgressTitle, isDone, startOfDay, userDocId } from "./utils.js";
+import { getMissionItemsForChallenge, getTodayAbsoluteDay, isFutureProgramDayItems } from "./commitment.js";
+import { escapeHtml, getProgressTitle, isDone, startOfDay, userDocId } from "./utils.js";
 
 export function themeStorageKey() {
   return state.currentUser ? `${THEME_KEY}_${userDocId(state.currentUser)}` : THEME_KEY;
@@ -88,10 +88,7 @@ export function getTodayMissionSummary(data = state.cachedData) {
       const todayAbsoluteDay = getTodayAbsoluteDay(challenge);
       if (todayAbsoluteDay < 1) return null;
 
-      const items = safeData.filter(item =>
-        Number(item.challenge || 1) === Number(challenge) &&
-        getProgramAbsoluteDay(item) === todayAbsoluteDay
-      );
+      const items = getMissionItemsForChallenge(safeData, challenge, done);
 
       if (items.length === 0) return null;
 

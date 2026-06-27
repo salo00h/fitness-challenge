@@ -12,6 +12,7 @@ import {
 import { getDone, saveDone } from "./auth.js";
 import {
   getJourneyInfo,
+  getMissionItemsForChallenge,
   getTodayAbsoluteDay,
   isFutureProgramDay,
   isFutureProgramDayItems
@@ -79,9 +80,7 @@ export function renderTodayMission(data) {
       const todayAbsoluteDay = getTodayAbsoluteDay(challenge);
       if (todayAbsoluteDay < 1) return "";
 
-      const items = data
-        .filter(item => challengeNumber(item) === Number(challenge) && getProgramAbsoluteDay(item) === todayAbsoluteDay)
-        .sort((a, b) => String(a.title || "").localeCompare(String(b.title || ""), "ar"));
+      const items = getMissionItemsForChallenge(data, challenge, done);
 
       if (items.length === 0) return "";
 
@@ -89,7 +88,8 @@ export function renderTodayMission(data) {
       const complete = items.every(item => isDone(done[item.id]));
       const locked = isFutureProgramDayItems(items);
       const allRest = items.every(item => item.type === "rest");
-      const journey = getJourneyInfo(data, challenge);
+      const missionAbsoluteDay = getProgramAbsoluteDay(sample);
+      const journey = { ...getJourneyInfo(data, challenge), today: missionAbsoluteDay };
 
       return `
         <article class="today-mission-card ${complete ? "is-complete" : ""}">
