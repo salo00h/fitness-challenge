@@ -14,6 +14,7 @@ import {
   closeChallenge,
   completeProgramDay,
   openChallenge,
+  openMissionTarget,
   renderViewer,
   toggleDone
 } from "./renderIndex.js";
@@ -40,6 +41,7 @@ window.deleteItemFromAdmin = deleteItemFromAdmin;
 window.changeChallengeWeek = changeChallengeWeek;
 window.openChallenge = openChallenge;
 window.closeChallenge = closeChallenge;
+window.openMissionTarget = openMissionTarget;
 window.editChallengeMeta = editChallengeMeta;
 window.completeProgramDay = completeProgramDay;
 window.resetParticipantPassword = resetParticipantPassword;

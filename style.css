@@ -172,6 +172,19 @@ nav a {
   gap: 14px;
 }
 
+.today-mission-card.is-clickable {
+  cursor: pointer;
+  transition: transform .2s ease, box-shadow .2s ease, border-color .2s ease;
+}
+
+.today-mission-card.is-clickable:hover,
+.today-mission-card.is-clickable:focus-visible {
+  border-color: var(--pink);
+  box-shadow: 0 22px 48px rgba(255, 11, 95, .16);
+  transform: translateY(-2px);
+  outline: none;
+}
+
 .today-mission-card+.today-mission-card {
   margin-top: 14px;
 }
@@ -571,6 +584,11 @@ button:hover {
 .day-card.is-locked {
   background: linear-gradient(180deg, #fff, #f8f8f8);
   border-color: #e5e7eb;
+}
+
+.day-card.is-highlighted,
+.challenge-box.is-highlighted {
+  animation: targetGlow 1.4s ease both;
 }
 
 .locked-day-banner,
@@ -2516,6 +2534,22 @@ textarea {
 @keyframes completePulse {
   50% {
     transform: scale(1.015);
+  }
+}
+
+@keyframes targetGlow {
+  0% {
+    box-shadow: 0 0 0 0 rgba(255, 11, 95, .32);
+    border-color: var(--pink);
+  }
+
+  45% {
+    box-shadow: 0 0 0 10px rgba(255, 11, 95, .08);
+    border-color: var(--pink);
+  }
+
+  100% {
+    box-shadow: inherit;
   }
 }
 

@@ -69,6 +69,27 @@ export async function closeChallenge() {
   });
 }
 
+export async function openMissionTarget(challenge, week, programDay) {
+  setChallengeWeek(challenge, week);
+  state.activeChallenge = Number(challenge) || 1;
+
+  await renderViewer({
+    refreshData: false,
+    refreshParticipants: false,
+    showLoading: false
+  });
+
+  const target =
+    document.querySelector(`[data-challenge="${Number(challenge) || 1}"] [data-program-day="${Number(programDay) || 1}"]`) ||
+    document.querySelector(`[data-challenge="${Number(challenge) || 1}"]`);
+
+  if (target) {
+    target.scrollIntoView({ behavior: "smooth", block: "start" });
+    target.classList.add("is-highlighted");
+    setTimeout(() => target.classList.remove("is-highlighted"), 1600);
+  }
+}
+
 export function renderTodayMission(data) {
   const box = document.getElementById("todayMission");
   if (!box) return;
@@ -92,7 +113,11 @@ export function renderTodayMission(data) {
       const journey = { ...getJourneyInfo(data, challenge), today: missionAbsoluteDay };
 
       return `
-        <article class="today-mission-card ${complete ? "is-complete" : ""}">
+        <article class="today-mission-card is-clickable ${complete ? "is-complete" : ""}"
+          role="button"
+          tabindex="0"
+          onclick="openMissionTarget(${challenge}, ${itemWeek(sample)}, ${itemProgramDay(sample)})"
+          onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openMissionTarget(${challenge}, ${itemWeek(sample)}, ${itemProgramDay(sample)})}">
           <div class="today-mission-head">
             <div>
               <span>${challengeName(challenge)} - ${weekName(itemWeek(sample))}</span>
@@ -117,7 +142,7 @@ export function renderTodayMission(data) {
 
           ${locked
           ? `<div class="locked-day-banner">🔒 يفتح في موعده</div>`
-          : `<button type="button" class="day-complete-btn ${complete ? "is-done" : ""}" ${complete ? "disabled" : ""} onclick="completeProgramDay(${challenge}, ${itemWeek(sample)}, ${itemProgramDay(sample)})">
+          : `<button type="button" class="day-complete-btn ${complete ? "is-done" : ""}" ${complete ? "disabled" : ""} onclick="event.stopPropagation(); completeProgramDay(${challenge}, ${itemWeek(sample)}, ${itemProgramDay(sample)})">
               ${complete ? "اليوم مكتمل ✓" : (allRest ? "تسجيل يوم الراحة" : "تم إنجاز كل تمارين اليوم")}
             </button>`
         }
@@ -450,7 +475,7 @@ export async function renderViewer(options = {}) {
                 </button>`;
 
             return `
-                      <article class="day-card ${dayLocked ? "is-locked" : ""} ${dayComplete ? "is-complete" : ""}">
+                      <article class="day-card ${dayLocked ? "is-locked" : ""} ${dayComplete ? "is-complete" : ""}" data-program-day="${day}">
                         <div class="day-head">
                           <div>
                             <h2>${dayName(day)}</h2>
