@@ -25,6 +25,7 @@ const db = getFirestore(app);
 const LOCAL_KEY = "fitness_program_v3_weeks_days";
 const DONE_KEY = "fitness_program_done_v1";
 const USER_KEY = "fitness_current_user_v1";
+const AUTH_KEY = "fitness_current_user_auth_v1";
 const MIGRATION_KEY = "fitness_done_migrated_to_firebase_v1";
 const COLLECTION_NAME = "exercises";
 const USERS_COLLECTION = "participants";
@@ -120,6 +121,30 @@ function userDocId(name) {
   return encodeURIComponent(normalizeUserName(name).toLowerCase());
 }
 
+function isAuthStoredFor(name) {
+  return normalizeUserName(name) && localStorage.getItem(AUTH_KEY) === "true";
+}
+
+function storeUserSession(name) {
+  const normalized = normalizeUserName(name);
+  localStorage.setItem(USER_KEY, normalized);
+  localStorage.setItem(AUTH_KEY, "true");
+  currentUser = normalized;
+}
+
+function clearUserSession() {
+  localStorage.removeItem(USER_KEY);
+  localStorage.removeItem(AUTH_KEY);
+}
+
+async function hashPassword(password) {
+  const data = new TextEncoder().encode(password);
+  const hash = await crypto.subtle.digest("SHA-256", data);
+  return [...new Uint8Array(hash)]
+    .map(byte => byte.toString(16).padStart(2, "0"))
+    .join("");
+}
+
 function getLocalDone() {
   try {
     return JSON.parse(localStorage.getItem(DONE_KEY) || "{}");
@@ -143,33 +168,177 @@ async function saveDone(done) {
   }, { merge: true });
 }
 
-function showUserLogin() {
+function showUserLogin(prefillName = "") {
   return new Promise(resolve => {
     const old = document.getElementById("userLoginOverlay");
     if (old) old.remove();
+
+    let mode = "name";
+    let selectedName = "";
+    let selectedRef = null;
+    let selectedUser = null;
 
     const overlay = document.createElement("div");
     overlay.id = "userLoginOverlay";
     overlay.className = "login-overlay";
     overlay.innerHTML = `
-      <form class="login-card">
-        <div class="login-icon">🔥</div>
-        <h2>اختاري اسمك</h2>
-        <p>سيتم حفظ تقدمك في Firebase، وستشاهدين تقدم المنافسة الأخرى.</p>
-        <input id="loginName" required placeholder="مثال: سارة" autocomplete="name">
-        <button type="submit">دخول للتحدي</button>
+      <form class="login-card account-login-card">
+        <div class="login-icon">🔐</div>
+        <h2 id="loginTitle">دخول المتسابقة</h2>
+        <p id="loginMessage">اكتبي اسمك لنبحث عن حسابك أو ننشئ حسابًا جديدًا.</p>
+
+        <label for="loginName">الاسم</label>
+        <input id="loginName" required placeholder="مثال: سارة" autocomplete="name" value="${escapeHtml(prefillName)}">
+
+        <div id="passwordFields" class="password-fields hidden">
+          <label for="loginPassword">كلمة المرور</label>
+          <input id="loginPassword" type="password" autocomplete="current-password" placeholder="كلمة المرور">
+
+          <div id="confirmPasswordWrap">
+            <label for="loginPasswordConfirm">تأكيد كلمة المرور</label>
+            <input id="loginPasswordConfirm" type="password" autocomplete="new-password" placeholder="أعيدي كتابة كلمة المرور">
+          </div>
+        </div>
+
+        <div id="loginError" class="login-error"></div>
+
+        <div class="login-actions">
+          <button type="submit" id="loginSubmit">متابعة</button>
+          <button type="button" id="loginBack" class="ghost hidden">رجوع للاسم</button>
+        </div>
       </form>
     `;
 
     document.body.appendChild(overlay);
 
-    overlay.querySelector("form").addEventListener("submit", e => {
+    const form = overlay.querySelector("form");
+    const nameInput = document.getElementById("loginName");
+    const passwordFields = document.getElementById("passwordFields");
+    const passwordInput = document.getElementById("loginPassword");
+    const confirmWrap = document.getElementById("confirmPasswordWrap");
+    const confirmInput = document.getElementById("loginPasswordConfirm");
+    const title = document.getElementById("loginTitle");
+    const message = document.getElementById("loginMessage");
+    const errorBox = document.getElementById("loginError");
+    const submit = document.getElementById("loginSubmit");
+    const back = document.getElementById("loginBack");
+
+    function setError(text) {
+      errorBox.textContent = text || "";
+    }
+
+    function setMode(nextMode) {
+      mode = nextMode;
+      setError("");
+      passwordFields.classList.remove("hidden");
+      back.classList.remove("hidden");
+      nameInput.readOnly = true;
+      passwordInput.value = "";
+      confirmInput.value = "";
+
+      if (mode === "login") {
+        title.textContent = "تسجيل الدخول";
+        message.textContent = "اكتبي كلمة المرور للدخول";
+        confirmWrap.classList.add("hidden");
+        passwordInput.autocomplete = "current-password";
+        submit.textContent = "دخول";
+      } else {
+        title.textContent = "إنشاء كلمة مرور";
+        message.textContent = "أنشئي كلمة مرور لحفظ حسابك";
+        confirmWrap.classList.remove("hidden");
+        passwordInput.autocomplete = "new-password";
+        submit.textContent = "حفظ كلمة المرور";
+      }
+
+      setTimeout(() => passwordInput.focus(), 30);
+    }
+
+    function resetToName() {
+      mode = "name";
+      selectedName = "";
+      selectedRef = null;
+      selectedUser = null;
+      title.textContent = "دخول المتسابقة";
+      message.textContent = "اكتبي اسمك لنبحث عن حسابك أو ننشئ حسابًا جديدًا.";
+      submit.textContent = "متابعة";
+      nameInput.readOnly = false;
+      passwordFields.classList.add("hidden");
+      back.classList.add("hidden");
+      confirmWrap.classList.remove("hidden");
+      passwordInput.value = "";
+      confirmInput.value = "";
+      setError("");
+      setTimeout(() => nameInput.focus(), 30);
+    }
+
+    back.addEventListener("click", resetToName);
+
+    form.addEventListener("submit", async e => {
       e.preventDefault();
-      const name = normalizeUserName(document.getElementById("loginName").value);
-      if (!name) return;
-      overlay.remove();
-      resolve(name);
+
+      try {
+        if (mode === "name") {
+          selectedName = normalizeUserName(nameInput.value);
+          if (!selectedName) return;
+
+          selectedRef = doc(db, USERS_COLLECTION, userDocId(selectedName));
+          const snap = await getDoc(selectedRef);
+          selectedUser = snap.exists() ? snap.data() : null;
+
+          setMode(selectedUser && selectedUser.passwordHash ? "login" : "create");
+          return;
+        }
+
+        const password = passwordInput.value;
+        const confirmPassword = confirmInput.value;
+
+        if (!password) {
+          setError(mode === "login" ? "اكتبي كلمة المرور للدخول" : "أنشئي كلمة مرور لحفظ حسابك");
+          return;
+        }
+
+        if (mode === "login") {
+          const passwordHash = await hashPassword(password);
+
+          if (!selectedUser || passwordHash !== selectedUser.passwordHash) {
+            setError("كلمة المرور غير صحيحة");
+            showPop("كلمة المرور غير صحيحة", "error");
+            passwordInput.select();
+            return;
+          }
+
+          storeUserSession(selectedName);
+          overlay.remove();
+          resolve({ name: selectedName });
+          return;
+        }
+
+        if (password !== confirmPassword) {
+          setError("كلمتا المرور غير متطابقتين");
+          showPop("كلمتا المرور غير متطابقتين", "error");
+          confirmInput.select();
+          return;
+        }
+
+        const passwordHash = await hashPassword(password);
+
+        await setDoc(selectedRef, {
+          name: selectedName,
+          passwordHash,
+          passwordCreatedAt: new Date().toISOString()
+        }, { merge: true });
+
+        storeUserSession(selectedName);
+        overlay.remove();
+        showPop("تم حفظ كلمة المرور بنجاح");
+        resolve({ name: selectedName });
+      } catch (e) {
+        setError("تعذر تسجيل الدخول الآن. حاولي مرة أخرى.");
+        showPop("تعذر تسجيل الدخول الآن", "error");
+      }
     });
+
+    setTimeout(() => nameInput.focus(), 50);
   });
 }
 
@@ -242,15 +411,27 @@ function ensureAdminAccess() {
 }
 
 async function ensureCurrentUser() {
-  currentUser = normalizeUserName(localStorage.getItem(USER_KEY));
+  const savedUser = normalizeUserName(localStorage.getItem(USER_KEY));
+  const hasAuth = isAuthStoredFor(savedUser);
+
+  currentUser = hasAuth ? savedUser : "";
 
   if (!currentUser) {
-    currentUser = await showUserLogin();
-    localStorage.setItem(USER_KEY, currentUser);
+    const login = await showUserLogin(savedUser);
+    currentUser = login.name;
   }
 
-  const ref = doc(db, USERS_COLLECTION, userDocId(currentUser));
-  const snap = await getDoc(ref);
+  let ref = doc(db, USERS_COLLECTION, userDocId(currentUser));
+  let snap = await getDoc(ref);
+
+  if (!snap.exists() && hasAuth) {
+    clearUserSession();
+    const login = await showUserLogin(currentUser);
+    currentUser = login.name;
+    ref = doc(db, USERS_COLLECTION, userDocId(currentUser));
+    snap = await getDoc(ref);
+  }
+
   const firebaseDone = snap.exists() ? (snap.data().done || {}) : {};
   const localDone = getLocalDone();
   const migrationKey = `${MIGRATION_KEY}_${userDocId(currentUser)}`;
@@ -280,15 +461,15 @@ function renderUserBar() {
       <span>المتسابقة الحالية</span>
       <strong>${escapeHtml(currentUser)}</strong>
     </div>
-    <button type="button" class="ghost" id="switchUserBtn">تغيير الاسم</button>
+    <button type="button" class="ghost" id="logoutUserBtn">تسجيل خروج</button>
   `;
 
   const hero = main.querySelector(".hero, .stats-hero");
   if (hero) hero.insertAdjacentElement("afterend", box);
   else main.prepend(box);
 
-  document.getElementById("switchUserBtn").onclick = () => {
-    localStorage.removeItem(USER_KEY);
+  document.getElementById("logoutUserBtn").onclick = () => {
+    clearUserSession();
     location.reload();
   };
 }

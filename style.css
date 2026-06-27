@@ -1520,15 +1520,51 @@ textarea {
   line-height: 1.8;
 }
 
+.account-login-card label {
+  display: block;
+  text-align: right;
+  color: var(--text);
+  font-weight: bold;
+  margin-top: 12px;
+}
+
 .login-card input {
   text-align: center;
   font-weight: bold;
   font-size: 18px;
 }
 
+.login-card input[readonly] {
+  background: #fff7fa;
+  color: var(--pink);
+  border-color: #ffd1df;
+}
+
+.password-fields {
+  margin-top: 8px;
+}
+
+.login-error {
+  min-height: 24px;
+  margin-top: 10px;
+  color: #d90429;
+  font-weight: bold;
+}
+
+.login-actions {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px;
+  margin-top: 10px;
+}
+
 .login-card button {
   width: 100%;
   margin-top: 14px;
+}
+
+.login-actions button {
+  margin-top: 0;
 }
 
 .user-bar {
