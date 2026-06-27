@@ -1076,8 +1076,17 @@ textarea {
   border-color: #ffd1df;
 }
 
+.challenge-box.is-closed {
+  width: min(100%, 360px);
+  justify-self: start;
+  padding: 16px;
+  border-radius: 22px;
+}
+
 .challenge-box.is-open {
   grid-column: 1 / -1;
+  width: 100%;
+  justify-self: stretch;
 }
 
 .challenge-head {
@@ -1092,6 +1101,11 @@ textarea {
   grid-template-columns: 1fr 220px;
 }
 
+.challenge-box.is-closed .challenge-head {
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
 .challenge-kicker {
   display: inline-block;
   color: var(--pink);
@@ -1102,9 +1116,19 @@ textarea {
   margin-bottom: 10px;
 }
 
+.challenge-box.is-closed .challenge-kicker {
+  padding: 5px 10px;
+  font-size: 13px;
+  margin-bottom: 8px;
+}
+
 .challenge-head h2 {
   margin: 0 0 6px;
   font-size: 28px;
+}
+
+.challenge-box.is-closed .challenge-head h2 {
+  font-size: 24px;
 }
 
 .challenge-box.is-open .challenge-head h2 {
@@ -1125,10 +1149,19 @@ textarea {
   box-shadow: 0 10px 25px rgba(0, 0, 0, .05);
 }
 
+.challenge-box.is-closed .challenge-progress {
+  padding: 12px;
+  border-radius: 18px;
+}
+
 .challenge-progress strong {
   display: block;
   color: var(--pink);
   font-size: 38px;
+}
+
+.challenge-box.is-closed .challenge-progress strong {
+  font-size: 32px;
 }
 
 .challenge-progress span {
@@ -1138,8 +1171,9 @@ textarea {
 
 .challenge-enter-btn {
   width: 100%;
-  margin-top: 6px;
-  min-height: 50px;
+  margin-top: 4px;
+  min-height: 44px;
+  padding: 10px 18px;
   background: linear-gradient(135deg, var(--pink), var(--pink2));
   box-shadow: 0 12px 26px rgba(255, 11, 95, .22);
 }

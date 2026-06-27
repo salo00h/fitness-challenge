@@ -32,6 +32,7 @@ let currentWeek = 1;
 let currentWeeksByChallenge = {};
 let activeChallenge = null;
 let cachedData = [];
+let cachedParticipants = null;
 let currentUser = null;
 let currentDone = {};
 
@@ -203,7 +204,8 @@ function calcUserStats(data, done) {
   };
 }
 
-async function renderParticipantsBoard(data) {
+async function renderParticipantsBoard(data, options = {}) {
+  const { refreshParticipants = true } = options;
   const main = document.querySelector("main.container");
   if (!main || (!document.getElementById("days") && !document.getElementById("doneCount"))) return;
 
@@ -218,9 +220,14 @@ async function renderParticipantsBoard(data) {
     else main.prepend(board);
   }
 
-  const snap = await getDocs(collection(db, USERS_COLLECTION));
-  const users = snap.docs
-    .map(d => d.data())
+  if (!refreshParticipants && !cachedParticipants) return;
+
+  if (refreshParticipants || !cachedParticipants) {
+    const snap = await getDocs(collection(db, USERS_COLLECTION));
+    cachedParticipants = snap.docs.map(d => d.data());
+  }
+
+  const users = cachedParticipants
     .filter(u => u.name)
     .sort((a, b) => String(a.name).localeCompare(String(b.name), "ar"));
 
@@ -289,17 +296,25 @@ function setChallengeWeek(challenge, week) {
 
 async function openChallenge(challenge) {
   activeChallenge = Number(challenge) || 1;
-  await renderViewer();
+  await renderViewer({
+    refreshData: false,
+    refreshParticipants: false,
+    showLoading: false
+  });
 
   const opened = document.querySelector(`[data-challenge="${activeChallenge}"]`);
   if (opened) {
-    opened.scrollIntoView({ behavior: "smooth", block: "start" });
+    opened.scrollIntoView({ behavior: "auto", block: "start" });
   }
 }
 
 async function closeChallenge() {
   activeChallenge = null;
-  await renderViewer();
+  await renderViewer({
+    refreshData: false,
+    refreshParticipants: false,
+    showLoading: false
+  });
 }
 
 
@@ -521,7 +536,11 @@ async function toggleDone(id) {
     }
   }
 
-  await renderViewer();
+  await renderViewer({
+    refreshData: false,
+    refreshParticipants: true,
+    showLoading: false
+  });
 
   window.scrollTo({
     top: scrollY,
@@ -533,14 +552,21 @@ async function toggleDone(id) {
   }
 }
 
-async function renderViewer() {
+async function renderViewer(options = {}) {
+  const {
+    refreshData = true,
+    refreshParticipants = true,
+    showLoading = true
+  } = options;
   const daysBox = document.getElementById("days");
   if (!daysBox) return;
 
   const done = getDone();
-  daysBox.innerHTML = `<div class="empty card">جاري تحميل التمارين...</div>`;
+  if (showLoading) {
+    daysBox.innerHTML = `<div class="empty card">جاري تحميل التمارين...</div>`;
+  }
 
-  const allData = await getData();
+  const allData = refreshData || cachedData.length === 0 ? await getData() : cachedData;
   updateProgressBoard(allData);
 
   if (allData.length === 0) {
@@ -686,7 +712,7 @@ async function renderViewer() {
   }).join("");
 
   updateProgressBoard(allData);
-  await renderParticipantsBoard(allData);
+  await renderParticipantsBoard(allData, { refreshParticipants });
 }
 
 async function changeChallengeWeek(challenge, step) {
@@ -697,7 +723,11 @@ async function changeChallengeWeek(challenge, step) {
   const maxWeek = weeks.length ? Math.max(...weeks) : 1;
   const nextWeek = Math.min(maxWeek, Math.max(minWeek, getChallengeWeek(challenge) + Number(step)));
   setChallengeWeek(challenge, nextWeek);
-  await renderViewer();
+  await renderViewer({
+    refreshData: false,
+    refreshParticipants: false,
+    showLoading: false
+  });
 }
 
 async function initAdmin() {
