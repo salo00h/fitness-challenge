@@ -619,7 +619,7 @@ function updateStats(data) {
   const doneMinutes = document.getElementById("doneMinutes");
   const doneWeeks = document.getElementById("doneWeeks");
 
-  if (doneCount) doneCount.textContent = `${completed.length} / ${workouts.length}`;
+  if (doneCount) doneCount.textContent = `${completed.length} من ${workouts.length}`;
   if (doneMinutes) doneMinutes.textContent = minutes;
   if (doneWeeks) doneWeeks.textContent = completedWeeks.length;
 
