@@ -31,6 +31,13 @@ const USERS_COLLECTION = "participants";
 const CHALLENGE_META_TYPE = "challenge-meta";
 const DELAY_PENALTY = 10;
 const DAY_MS = 24 * 60 * 60 * 1000;
+const DAILY_QUOTES = [
+  "الاستمرارية أهم من الكمال 💪",
+  "خطوة صغيرة اليوم تصنع فرقًا كبيرًا غدًا 🌷",
+  "كل تمرين يقربك من هدفك 🔥",
+  "أنتِ أقوى مما تظنين 💖",
+  "لا تنتظري الحماس، اصنعيه 🏆"
+];
 let currentWeek = 1;
 let currentWeeksByChallenge = {};
 let activeChallenge = null;
@@ -239,9 +246,12 @@ function calcUserStats(data, done) {
   const workouts = workoutOnly(data);
   const completed = workouts.filter(x => isDone(done[x.id]));
   const weekScope = getParticipantWeekScope(data);
+  const percent = calcCompletionPercent(workouts, done);
 
   return {
-    percent: calcCompletionPercent(workouts, done),
+    percent,
+    commitment: calcCommitmentPercent(workouts, done),
+    title: getProgressTitle(percent),
     completed: completed.length,
     total: workouts.length,
     minutes: completed.reduce((sum, x) => sum + (Number(x.duration) || 0), 0),
@@ -284,7 +294,13 @@ async function renderParticipantsBoard(data, options = {}) {
       const isMe = isCurrentUserName(user.name);
       return { user, stats, isMe };
     })
-    .filter(item => item.isMe || item.stats.percent > 0);
+    .filter(item => item.isMe || item.stats.percent > 0)
+    .sort((a, b) =>
+      b.stats.commitment - a.stats.commitment ||
+      b.stats.percent - a.stats.percent ||
+      b.stats.minutes - a.stats.minutes ||
+      String(a.user.name).localeCompare(String(b.user.name), "ar")
+    );
 
   if (visibleUsers.length === 0) {
     board.innerHTML = "";
@@ -301,6 +317,7 @@ async function renderParticipantsBoard(data, options = {}) {
               <strong>${escapeHtml(user.name)}</strong>
               <span>${isMe ? "أنتِ" : "المنافسة"}</span>
             </div>
+            <div class="participant-title">${escapeHtml(stats.title)}</div>
 
             <div class="participant-percent">${stats.percent}%</div>
 
@@ -310,6 +327,7 @@ async function renderParticipantsBoard(data, options = {}) {
 
             <div class="participant-meta">
               <span>✅ ${stats.completed} / ${stats.total} تمرين</span>
+              <span>🎯 ${stats.commitment}% التزام</span>
               <span>⏱ ${stats.minutes} دقيقة</span>
               <span>⭐ ${stats.completedWeeks} أسبوع</span>
               <span>📅 ${stats.weekLabel} ${stats.weekPercent}%</span>
@@ -478,21 +496,182 @@ function calcCommitmentPercent(items, done) {
   const completedItems = workoutOnly(items).filter(item => isDone(done[item.id]));
   if (completedItems.length === 0) return 100;
 
-  const scores = completedItems.map(item => {
-    const absoluteDay = getProgramAbsoluteDay(item);
-    if (challengeNumber(item) === 1 && absoluteDay <= 3) return 100;
+  const scores = completedItems
+    .map(item => getCommitmentScore(item, done))
+    .filter(score => score !== null);
 
-    const completedAt = getCompletedAt(done[item.id]);
-    if (!completedAt) return 100;
-
-    const expectedDate = getExpectedDate(item);
-    if (!expectedDate) return 100;
-
-    const delayDays = Math.max(0, Math.floor((startOfDay(completedAt) - startOfDay(expectedDate)) / DAY_MS));
-    return Math.max(0, 100 - (delayDays * DELAY_PENALTY));
-  });
+  if (scores.length === 0) return 100;
 
   return Math.round(scores.reduce((sum, score) => sum + score, 0) / scores.length);
+}
+
+function getCommitmentScore(item, done) {
+  const record = done[item.id];
+  if (!isDone(record)) return null;
+
+  const absoluteDay = getProgramAbsoluteDay(item);
+  if (challengeNumber(item) === 1 && absoluteDay <= 3) return 100;
+
+  const completedAt = getCompletedAt(record);
+  if (!completedAt) return 100;
+
+  const expectedDate = getExpectedDate(item);
+  if (!expectedDate) return 100;
+
+  const delayDays = Math.max(0, Math.floor((startOfDay(completedAt) - startOfDay(expectedDate)) / DAY_MS));
+  return Math.max(0, 100 - (delayDays * DELAY_PENALTY));
+}
+
+function getProgressTitle(percent) {
+  const value = Number(percent) || 0;
+  if (value >= 100) return "بطلة التحدي 🏆";
+  if (value >= 75) return "مقاتلة 🔥";
+  if (value >= 50) return "قوية 💪";
+  if (value >= 25) return "مجتهدة 🌸";
+  return "مبتدئة 🌱";
+}
+
+function getProgramDayGroups(data) {
+  const groups = groupByKey(data, dayKey);
+  return Object.keys(groups)
+    .map(key => {
+      const items = groups[key];
+      const sample = items[0] || {};
+      return {
+        key,
+        challenge: challengeNumber(sample),
+        week: itemWeek(sample),
+        programDay: itemProgramDay(sample),
+        absoluteDay: getProgramAbsoluteDay(sample),
+        items
+      };
+    })
+    .sort((a, b) =>
+      a.challenge - b.challenge ||
+      a.absoluteDay - b.absoluteDay ||
+      a.week - b.week ||
+      a.programDay - b.programDay
+    );
+}
+
+function isProgramDayComplete(dayGroup, done) {
+  return dayGroup.items.length > 0 && dayGroup.items.every(item => isDone(done[item.id]));
+}
+
+function isProgramDayOnTime(dayGroup, done) {
+  return isProgramDayComplete(dayGroup, done) &&
+    dayGroup.items.every(item => getCommitmentScore(item, done) === 100);
+}
+
+function calcCommitmentStreak(data, done) {
+  const groups = getProgramDayGroups(data);
+  const byChallenge = groups.reduce((map, group) => {
+    const key = String(group.challenge);
+    if (!map[key]) map[key] = [];
+    map[key].push(group);
+    return map;
+  }, {});
+
+  return Object.values(byChallenge).reduce((best, challengeGroups) => {
+    let streak = 0;
+    let bestForChallenge = 0;
+    let previousAbsoluteDay = null;
+
+    challengeGroups.forEach(group => {
+      const isConsecutive = previousAbsoluteDay === null || group.absoluteDay === previousAbsoluteDay + 1;
+
+      if (isProgramDayOnTime(group, done)) {
+        streak = isConsecutive ? streak + 1 : 1;
+        bestForChallenge = Math.max(bestForChallenge, streak);
+      } else {
+        streak = 0;
+      }
+
+      previousAbsoluteDay = group.absoluteDay;
+    });
+
+    return Math.max(best, bestForChallenge);
+  }, 0);
+}
+
+function getDailyQuote(date = new Date()) {
+  const dayIndex = Math.floor(startOfDay(date).getTime() / DAY_MS);
+  return DAILY_QUOTES[Math.abs(dayIndex) % DAILY_QUOTES.length];
+}
+
+function renderDailyQuote() {
+  let box = document.getElementById("dailyQuote");
+  if (!box) {
+    const main = document.querySelector("main.container");
+    const hero = document.querySelector(".hero, .stats-hero");
+    if (!main || !hero) return;
+
+    box = document.createElement("section");
+    box.id = "dailyQuote";
+    box.className = "daily-quote";
+    hero.insertAdjacentElement("afterend", box);
+  }
+
+  box.innerHTML = `
+    <span>اقتباس اليوم</span>
+    <strong>${escapeHtml(getDailyQuote())}</strong>
+  `;
+}
+
+function isCalendarToday(dayGroup) {
+  const expectedDate = getExpectedDate(dayGroup.items[0]);
+  if (!expectedDate) return false;
+  return startOfDay(expectedDate).getTime() === startOfDay(new Date()).getTime();
+}
+
+function renderProgramCalendar(data) {
+  const calendar = document.getElementById("programCalendar");
+  if (!calendar) return;
+
+  const done = getDone();
+  const dayGroups = getProgramDayGroups(data);
+
+  if (dayGroups.length === 0) {
+    calendar.innerHTML = `<div class="calendar-empty">لا توجد أيام برنامج حتى الآن.</div>`;
+    return;
+  }
+
+  const byChallenge = dayGroups.reduce((map, group) => {
+    const key = String(group.challenge);
+    if (!map[key]) map[key] = [];
+    map[key].push(group);
+    return map;
+  }, {});
+
+  calendar.innerHTML = Object.keys(byChallenge)
+    .map(Number)
+    .sort((a, b) => a - b)
+    .map(challenge => `
+      <div class="calendar-challenge">
+        <h3>${challengeName(challenge)}</h3>
+        <div class="calendar-grid">
+          ${byChallenge[String(challenge)].map(dayGroup => {
+      const complete = isProgramDayComplete(dayGroup, done);
+      const onTime = isProgramDayOnTime(dayGroup, done);
+      const today = isCalendarToday(dayGroup);
+      const classes = [
+        "calendar-day",
+        complete ? "is-complete" : "is-pending",
+        onTime ? "is-on-time" : "",
+        today ? "is-today" : ""
+      ].filter(Boolean).join(" ");
+
+      return `
+              <div class="${classes}" title="${escapeHtml(`${challengeName(dayGroup.challenge)} - ${weekName(dayGroup.week)} - ${dayName(dayGroup.programDay)}`)}">
+                <span>${dayGroup.absoluteDay}</span>
+                <small>${weekName(dayGroup.week)} - ${dayName(dayGroup.programDay)}</small>
+                ${onTime ? `<em>⭐</em>` : ""}
+              </div>
+            `;
+    }).join("")}
+        </div>
+      </div>
+    `).join("");
 }
 
 function calcPercent(items, done) {
@@ -614,21 +793,29 @@ function updateStats(data) {
   const completed = workouts.filter(x => isDone(done[x.id]));
   const minutes = completed.reduce((sum, x) => sum + (Number(x.duration) || 0), 0);
   const completedWeeks = getCompletedWeeks(data, done);
+  const completionPercent = calcCompletionPercent(workouts, done);
+  const streak = calcCommitmentStreak(data, done);
 
   const doneCount = document.getElementById("doneCount");
   const doneMinutes = document.getElementById("doneMinutes");
   const doneWeeks = document.getElementById("doneWeeks");
+  const commitmentStreak = document.getElementById("commitmentStreak");
+  const achievementTitle = document.getElementById("achievementTitle");
 
   if (doneCount) doneCount.textContent = `${completed.length} من ${workouts.length}`;
   if (doneMinutes) doneMinutes.textContent = minutes;
   if (doneWeeks) doneWeeks.textContent = completedWeeks.length;
+  if (commitmentStreak) commitmentStreak.textContent = `${streak} أيام متتالية`;
+  if (achievementTitle) achievementTitle.textContent = getProgressTitle(completionPercent);
 
   const weekStars = document.getElementById("weekStars");
   if (weekStars) {
     weekStars.innerHTML = completedWeeks.length
-      ? completedWeeks.map(w => `<span>⭐ ${challengeName(w.challenge)} - ${weekName(w.week)} مكتمل</span>`).join("")
+      ? completedWeeks.map(w => `<span>🏆 بطلة ${weekName(w.week)} - ${challengeName(w.challenge)}</span>`).join("")
       : `<span class="muted-star">أكمل أسبوع كامل لتحصل على نجمة ⭐</span>`;
   }
+
+  renderProgramCalendar(data);
 }
 
 function updateProgressBoard(data) {
@@ -1285,6 +1472,8 @@ window.closeChallenge = closeChallenge;
 window.editChallengeMeta = editChallengeMeta;
 
 async function bootstrap() {
+  renderDailyQuote();
+
   if (document.getElementById("exerciseForm")) {
     initAdmin();
     return;

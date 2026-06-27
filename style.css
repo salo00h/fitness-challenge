@@ -88,6 +88,48 @@ nav a {
   font-size: 18px
 }
 
+.daily-quote {
+  background: linear-gradient(135deg, #fff, #fff4f8);
+  border: 1px solid #ffd1df;
+  border-radius: 24px;
+  padding: 18px 22px;
+  margin: 0 0 22px;
+  box-shadow: 0 14px 32px rgba(255, 11, 95, .08);
+  position: relative;
+  overflow: hidden;
+}
+
+.daily-quote:before {
+  content: "";
+  position: absolute;
+  width: 92px;
+  height: 92px;
+  border-radius: 50%;
+  background: var(--soft);
+  left: -30px;
+  top: -36px;
+}
+
+.daily-quote span,
+.daily-quote strong {
+  position: relative;
+  z-index: 1;
+}
+
+.daily-quote span {
+  display: block;
+  color: var(--pink);
+  font-weight: bold;
+  margin-bottom: 6px;
+}
+
+.daily-quote strong {
+  display: block;
+  color: var(--text);
+  font-size: 22px;
+  line-height: 1.7;
+}
+
 .countdown-card,
 .trophy-box {
   background: white;
@@ -823,7 +865,8 @@ textarea {
 
 .stats-page .stat-card,
 .stats-page .progress-card,
-.achievement-card {
+.achievement-card,
+.calendar-card {
   background: white;
   border: 1px solid var(--border);
   color: var(--text);
@@ -873,6 +916,16 @@ textarea {
   font-size: 42px;
 }
 
+.dashboard-kpis {
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+.streak-card strong,
+.title-card strong {
+  font-size: 30px;
+  line-height: 1.4;
+}
+
 .dashboard-progress .progress-card {
   border-radius: 26px;
   padding: 22px;
@@ -904,7 +957,117 @@ textarea {
   font-size: 28px;
 }
 
+.calendar-card {
+  border-radius: 28px;
+  padding: 26px;
+  margin-top: 26px;
+}
+
+.calendar-card h2 {
+  margin: 0 0 18px;
+  color: var(--text);
+  font-size: 28px;
+}
+
+.program-calendar {
+  display: grid;
+  gap: 20px;
+}
+
+.calendar-challenge {
+  display: grid;
+  gap: 12px;
+}
+
+.calendar-challenge h3 {
+  margin: 0;
+  color: var(--pink);
+  font-size: 22px;
+}
+
+.calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(86px, 1fr));
+  gap: 10px;
+}
+
+.calendar-day {
+  min-height: 82px;
+  border-radius: 18px;
+  border: 1px solid var(--border);
+  background: #f3f4f6;
+  color: var(--muted);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 5px;
+  text-align: center;
+  padding: 10px;
+  position: relative;
+}
+
+.calendar-day span {
+  color: var(--text);
+  font-weight: bold;
+  font-size: 21px;
+}
+
+.calendar-day small {
+  font-size: 11px;
+  line-height: 1.4;
+  font-weight: bold;
+}
+
+.calendar-day em {
+  position: absolute;
+  left: 8px;
+  top: 7px;
+  font-style: normal;
+  font-size: 16px;
+}
+
+.calendar-day.is-complete {
+  background: linear-gradient(135deg, #fff, #fff0f6);
+  border-color: #ff9abe;
+  box-shadow: 0 10px 22px rgba(255, 11, 95, .1);
+}
+
+.calendar-day.is-complete span {
+  color: var(--pink);
+}
+
+.calendar-day.is-on-time {
+  border-color: var(--green);
+  box-shadow:
+    0 10px 22px rgba(22, 163, 74, .10),
+    inset 0 0 0 2px rgba(22, 163, 74, .18);
+}
+
+.calendar-day.is-today {
+  outline: 2px dashed var(--pink);
+  outline-offset: 3px;
+}
+
+.calendar-empty {
+  color: var(--muted);
+  font-weight: bold;
+  background: #fafafa;
+  border: 1px dashed var(--border);
+  border-radius: 18px;
+  padding: 18px;
+}
+
 @media(max-width:800px) {
+  .daily-quote {
+    padding: 16px;
+    border-radius: 20px;
+  }
+
+  .daily-quote strong {
+    font-size: 18px;
+  }
+
   .stats-hero {
     grid-template-columns: 1fr;
     text-align: center;
@@ -931,6 +1094,20 @@ textarea {
 
   .dashboard-countdown strong {
     font-size: 26px;
+  }
+
+  .calendar-card {
+    padding: 18px;
+    border-radius: 22px;
+  }
+
+  .calendar-grid {
+    grid-template-columns: repeat(auto-fit, minmax(74px, 1fr));
+  }
+
+  .calendar-day {
+    min-height: 76px;
+    border-radius: 16px;
   }
 }
 
@@ -1160,6 +1337,21 @@ textarea {
   border-radius: 999px;
   font-weight: bold;
   font-size: 12px;
+}
+
+.participant-title {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  max-width: 100%;
+  margin-top: 10px;
+  color: var(--pink);
+  background: #fff0f6;
+  border: 1px solid #ffd1df;
+  border-radius: 999px;
+  padding: 6px 12px;
+  font-weight: bold;
+  font-size: 13px;
 }
 
 .participant-percent {
