@@ -33,6 +33,7 @@ const CHALLENGE_META_TYPE = "challenge-meta";
 const ADMIN_PASSWORD = "1234";
 const ADMIN_SESSION_KEY = "fitness_admin_unlocked_v1";
 const THEME_KEY = "fitness_theme_v1";
+const DEFAULT_CHALLENGE_START_DATE = "2025-06-20";
 const DELAY_PENALTY = 10;
 const DAY_MS = 24 * 60 * 60 * 1000;
 const AVATARS = ["🌸", "🔥", "💪", "🏆", "⭐", "🌷", "💖", "🦋", "👑", "✨"];
@@ -52,6 +53,7 @@ let cachedParticipants = null;
 let currentUser = null;
 let currentUserProfile = null;
 let currentDone = {};
+const warnedDefaultStartDates = new Set();
 
 // عدل هنا عدد أيام التحدي
 const CHALLENGE_DAYS = 30;
@@ -99,6 +101,7 @@ async function saveChallengeMeta(challenge, data) {
     imageX: clampImageNumber(data.imageX, 0, 100, 50),
     imageY: clampImageNumber(data.imageY, 0, 100, 50),
     imageZoom: clampImageNumber(data.imageZoom, 60, 170, 100),
+    startDate: normalizeDateInput(data.startDate) || "",
     description: String(data.description || "").trim(),
     updatedAt: new Date().toISOString()
   };
@@ -939,17 +942,62 @@ function getProgramAbsoluteDay(item) {
   return ((week - 1) * 7) + programDay;
 }
 
-function startOfDay(date) {
+function normalizeDateInput(value) {
+  const text = String(value || "").trim();
+  if (!text) return "";
+
+  const match = text.match(/^(\d{4})-(\d{2})-(\d{2})(?:$|T|\s)/);
+  if (match) {
+    const [, year, month, day] = match;
+    const date = new Date(Number(year), Number(month) - 1, Number(day));
+    if (
+      date.getFullYear() === Number(year) &&
+      date.getMonth() === Number(month) - 1 &&
+      date.getDate() === Number(day)
+    ) {
+      return `${year}-${month}-${day}`;
+    }
+    return "";
+  }
+
+  const date = new Date(text);
+  if (Number.isNaN(date.getTime())) return "";
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function parseLocalDate(value) {
+  const normalized = normalizeDateInput(value);
+  if (!normalized) return null;
+  const [year, month, day] = normalized.split("-").map(Number);
+  return new Date(year, month - 1, day);
+}
+
+function formatLocalDate(date) {
+  const local = startOfLocalDay(date);
+  const year = local.getFullYear();
+  const month = String(local.getMonth() + 1).padStart(2, "0");
+  const day = String(local.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function startOfLocalDay(date) {
   const d = new Date(date);
   d.setHours(0, 0, 0, 0);
   return d;
+}
+
+function startOfDay(date) {
+  return startOfLocalDay(date);
 }
 
 function getExpectedDate(item) {
   const absoluteDay = getProgramAbsoluteDay(item);
   if (absoluteDay <= 0) return null;
 
-  const start = startOfDay(challengeStartDate(challengeNumber(item)));
+  const start = startOfLocalDay(challengeStartDate(challengeNumber(item)));
   start.setDate(start.getDate() + absoluteDay - 1);
   return start;
 }
@@ -957,16 +1005,42 @@ function getExpectedDate(item) {
 function isFutureProgramDay(item) {
   const expectedDate = getExpectedDate(item);
   if (!expectedDate) return false;
-  return startOfDay(expectedDate).getTime() > startOfDay(new Date()).getTime();
+  return startOfLocalDay(expectedDate).getTime() > startOfLocalDay(new Date()).getTime();
 }
 
 function isFutureProgramDayItems(items) {
   return items.length > 0 && isFutureProgramDay(items[0]);
 }
 
+function debugChallengeLock(challenge, week, day) {
+  const item = {
+    challenge: Number(challenge) || 1,
+    week: Number(week) || 1,
+    programDay: Number(day) || 1
+  };
+  const absoluteDay = getProgramAbsoluteDay(item);
+  const startDate = challengeStartDate(item.challenge);
+  const expectedDate = getExpectedDate(item);
+  const today = startOfLocalDay(new Date());
+  const isFuture = isFutureProgramDay(item);
+  const debugInfo = {
+    challenge: item.challenge,
+    week: item.week,
+    day: item.programDay,
+    absoluteDay,
+    challengeStartDate: startDate ? formatLocalDate(startDate) : null,
+    expectedDate: expectedDate ? formatLocalDate(expectedDate) : null,
+    today: formatLocalDate(today),
+    isFuture
+  };
+
+  console.table(debugInfo);
+  return debugInfo;
+}
+
 function getTodayAbsoluteDay(challenge) {
-  const start = startOfDay(challengeStartDate(challenge));
-  const today = startOfDay(new Date());
+  const start = startOfLocalDay(challengeStartDate(challenge));
+  const today = startOfLocalDay(new Date());
   return Math.floor((today - start) / DAY_MS) + 1;
 }
 
@@ -1806,13 +1880,22 @@ function showPop(message, type = "success") {
 
 function challengeStartDate(challenge = 1) {
   const number = Number(challenge) || 1;
-  const key = number === 1 ? "challenge_start_date" : `challenge_start_date_${number}`;
-  let start = localStorage.getItem(key);
-  if (!start) {
-    start = new Date().toISOString();
-    localStorage.setItem(key, start);
+  const meta = getChallengeMeta(number);
+  const savedStartDate = normalizeDateInput(meta.startDate);
+
+  if (savedStartDate) {
+    return parseLocalDate(savedStartDate);
   }
-  return new Date(start);
+
+  if (!warnedDefaultStartDates.has(number)) {
+    console.warn("No startDate found for challenge, using default", {
+      challenge: number,
+      defaultStartDate: DEFAULT_CHALLENGE_START_DATE
+    });
+    warnedDefaultStartDates.add(number);
+  }
+
+  return parseLocalDate(DEFAULT_CHALLENGE_START_DATE);
 }
 
 function updateCountdown(data = cachedData) {
@@ -2314,6 +2397,7 @@ function fillChallengeMetaForm(challenge) {
   const select = document.getElementById("metaChallenge");
   const imageInput = document.getElementById("challengeImage");
   const fileInput = document.getElementById("challengeImageFile");
+  const startDateInput = document.getElementById("challengeStartDate");
   const xInput = document.getElementById("challengeImageX");
   const yInput = document.getElementById("challengeImageY");
   const zoomInput = document.getElementById("challengeImageZoom");
@@ -2325,6 +2409,7 @@ function fillChallengeMetaForm(challenge) {
   select.value = String(number);
   imageInput.value = meta.image || "";
   if (fileInput) fileInput.value = "";
+  if (startDateInput) startDateInput.value = normalizeDateInput(meta.startDate) || DEFAULT_CHALLENGE_START_DATE;
   if (xInput) xInput.value = clampImageNumber(meta.imageX, 0, 100, 50);
   if (yInput) yInput.value = clampImageNumber(meta.imageY, 0, 100, 50);
   if (zoomInput) zoomInput.value = clampImageNumber(meta.imageZoom, 60, 170, 100);
@@ -2342,6 +2427,7 @@ function renderChallengeMetaList() {
     const meta = getChallengeMeta(challenge);
     const image = meta.image || challengePlaceholder(challenge);
     const description = meta.description || "لم يتم إضافة وصف بعد";
+    const startDate = normalizeDateInput(meta.startDate) || DEFAULT_CHALLENGE_START_DATE;
     const imageStyle = getChallengeImageStyle(meta);
 
     return `
@@ -2349,6 +2435,7 @@ function renderChallengeMetaList() {
         <img src="${escapeHtml(image)}" alt="${challengeName(challenge)}" style="${imageStyle}">
         <div>
           <strong>${challengeName(challenge)}</strong>
+          <small>بداية التحدي: ${escapeHtml(startDate)}</small>
           <p>${escapeHtml(description)}</p>
         </div>
         <button type="button" onclick="editChallengeMeta(${challenge})">تعديل</button>
@@ -2372,6 +2459,7 @@ function initChallengeMetaAdmin() {
   const select = document.getElementById("metaChallenge");
   const imageInput = document.getElementById("challengeImage");
   const fileInput = document.getElementById("challengeImageFile");
+  const startDateInput = document.getElementById("challengeStartDate");
   const xInput = document.getElementById("challengeImageX");
   const yInput = document.getElementById("challengeImageY");
   const zoomInput = document.getElementById("challengeImageZoom");
@@ -2411,6 +2499,7 @@ function initChallengeMetaAdmin() {
       imageX: xInput?.value,
       imageY: yInput?.value,
       imageZoom: zoomInput?.value,
+      startDate: startDateInput?.value,
       description: document.getElementById("challengeDescription").value
     });
 
@@ -2670,6 +2759,7 @@ window.completeProgramDay = completeProgramDay;
 window.resetParticipantPassword = resetParticipantPassword;
 window.toggleTheme = toggleTheme;
 window.closeCertificate = closeCertificate;
+window.debugChallengeLock = debugChallengeLock;
 
 async function bootstrap() {
   applyTheme();

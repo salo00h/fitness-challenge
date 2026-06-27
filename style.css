@@ -768,6 +768,13 @@ textarea {
   color: var(--pink);
 }
 
+.challenge-meta-card small {
+  display: block;
+  color: var(--muted);
+  font-weight: bold;
+  margin-top: 4px;
+}
+
 .challenge-meta-card p {
   margin: 5px 0 0;
   color: var(--muted);
