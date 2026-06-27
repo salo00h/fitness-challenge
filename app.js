@@ -638,10 +638,6 @@ async function renderViewer(options = {}) {
       .filter(x => Number(x.week) === Number(selectedWeek))
       .sort((a, b) => Number(a.programDay) - Number(b.programDay));
 
-    const challengePercent = calcPercent(challengeData, done);
-    const challengeWorkouts = workoutOnly(challengeData);
-    const completedCount = challengeWorkouts.filter(x => done[x.id]).length;
-    const totalCount = challengeWorkouts.length;
     const weekPercent = calcPercent(weekData, done);
     const isOpen = Number(activeChallenge) === Number(challenge);
     const meta = getChallengeMeta(challenge);
@@ -668,13 +664,6 @@ async function renderViewer(options = {}) {
             <span class="challenge-kicker">🔥 برنامج مستقل</span>
             <h2>${challengeName(challenge)}</h2>
             <p class="challenge-description">${escapeHtml(metaDescription)}</p>
-            <p class="challenge-count">${completedCount} من ${totalCount} تمرين مكتمل</p>
-          </div>
-
-          <div class="challenge-progress">
-            <strong>${challengePercent}%</strong>
-            <span>إنجاز التحدي</span>
-            <div class="bar"><div style="width:${challengePercent}%"></div></div>
           </div>
         </div>
 
@@ -763,7 +752,6 @@ async function renderViewer(options = {}) {
   }).join("");
 
   updateProgressBoard(allData);
-  await renderParticipantsBoard(allData, { refreshParticipants });
 }
 
 async function changeChallengeWeek(challenge, step) {
