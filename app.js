@@ -602,19 +602,75 @@ function renderUserBar() {
   renderGreetingMessage();
 }
 
-function renderGreetingMessage() {
-  if (!currentUser || document.getElementById("greetingMessage")) return;
+function getTodayMissionSummary(data = cachedData) {
+  const safeData = Array.isArray(data) ? data : [];
+  if (safeData.length === 0) return { state: "empty", remaining: 0 };
+
+  const done = getDone();
+  const challenges = [...new Set(safeData.map(challengeNumber))].sort((a, b) => a - b);
+  const missions = challenges
+    .map(challenge => {
+      const todayAbsoluteDay = getTodayAbsoluteDay(challenge);
+      if (todayAbsoluteDay < 1) return null;
+
+      const items = safeData.filter(item =>
+        challengeNumber(item) === Number(challenge) &&
+        getProgramAbsoluteDay(item) === todayAbsoluteDay
+      );
+
+      if (items.length === 0) return null;
+
+      return {
+        items,
+        locked: isFutureProgramDayItems(items),
+        complete: items.every(item => isDone(done[item.id])),
+        allRest: items.every(item => item.type === "rest"),
+        remainingWorkouts: items.filter(item => item.type !== "rest" && !isDone(done[item.id])).length
+      };
+    })
+    .filter(Boolean);
+
+  if (missions.length === 0) return { state: "empty", remaining: 0 };
+  if (missions.every(mission => mission.locked)) return { state: "locked", remaining: 0 };
+
+  const available = missions.filter(mission => !mission.locked);
+  if (available.every(mission => mission.complete)) return { state: "complete", remaining: 0 };
+  if (available.every(mission => mission.allRest)) return { state: "rest", remaining: 0 };
+
+  const remaining = available.reduce((sum, mission) => sum + mission.remainingWorkouts, 0);
+  return remaining > 0
+    ? { state: "workout", remaining }
+    : { state: "rest", remaining: 0 };
+}
+
+function renderGreetingMessage(data = cachedData) {
+  if (!currentUser) return;
   const main = document.querySelector("main.container");
   const anchor = document.getElementById("currentUserBar");
   if (!main || !anchor) return;
 
   const hour = new Date().getHours();
   const greeting = hour < 12 ? "صباح القوة" : hour < 18 ? "مساء النشاط" : "ليلة إنجاز";
-  const box = document.createElement("section");
-  box.id = "greetingMessage";
-  box.className = "greeting-message";
-  box.innerHTML = `<strong>${greeting} يا ${escapeHtml(currentUser)}</strong><span>تمرين اليوم ينتظرك 🔥</span>`;
-  anchor.insertAdjacentElement("afterend", box);
+  const summary = getTodayMissionSummary(data);
+  const message = {
+    complete: "ممتاز! مهمة اليوم مكتملة ✓",
+    rest: "اليوم راحة وتعافي، استمتعي بيومك 🌸",
+    locked: "مهمة اليوم لم تفتح بعد 🔒",
+    empty: "لا توجد مهمة محددة اليوم، استعدي للخطوة القادمة 🌷",
+    workout: summary.remaining === 1
+      ? "باقي تمرين واحد وتكملين اليوم 🔥"
+      : `تمارين اليوم تنتظرك: ${summary.remaining} تمارين 🔥`
+  }[summary.state] || "تمارين اليوم تنتظرك 🔥";
+
+  let box = document.getElementById("greetingMessage");
+  if (!box) {
+    box = document.createElement("section");
+    box.id = "greetingMessage";
+    box.className = "greeting-message";
+    anchor.insertAdjacentElement("afterend", box);
+  }
+
+  box.innerHTML = `<strong>${greeting} يا ${escapeHtml(currentUser)}</strong><span>${message}</span>`;
 }
 
 function isCurrentUserName(name) {
@@ -1176,6 +1232,7 @@ function renderTodayMission(data) {
       const sample = items[0];
       const complete = items.every(item => isDone(done[item.id]));
       const locked = isFutureProgramDayItems(items);
+      const allRest = items.every(item => item.type === "rest");
       const journey = getJourneyInfo(data, challenge);
 
       return `
@@ -1183,7 +1240,7 @@ function renderTodayMission(data) {
           <div class="today-mission-head">
             <div>
               <span>${challengeName(challenge)} - ${weekName(itemWeek(sample))}</span>
-              <h2>${complete ? "مهمة اليوم مكتملة ✓" : "مهمة اليوم"}</h2>
+              <h2>${complete ? "مهمة اليوم مكتملة ✓" : (allRest ? "يوم راحة 🌸" : "مهمة اليوم")}</h2>
             </div>
             <strong>${dayName(itemProgramDay(sample))}</strong>
           </div>
@@ -1205,7 +1262,7 @@ function renderTodayMission(data) {
           ${locked
           ? `<div class="locked-day-banner">🔒 يفتح في موعده</div>`
           : `<button type="button" class="day-complete-btn ${complete ? "is-done" : ""}" ${complete ? "disabled" : ""} onclick="completeProgramDay(${challenge}, ${itemWeek(sample)}, ${itemProgramDay(sample)})">
-              ${complete ? "اليوم مكتمل ✓" : "تم إنجاز كل تمارين اليوم"}
+              ${complete ? "اليوم مكتمل ✓" : (allRest ? "تسجيل يوم الراحة" : "تم إنجاز كل تمارين اليوم")}
             </button>`
         }
         </article>
@@ -1817,6 +1874,7 @@ function updateStats(data) {
 
   renderProgramCalendar(data);
   renderPersonalProfile(data);
+  renderGreetingMessage(data);
 }
 
 function updateProgressBoard(data) {
