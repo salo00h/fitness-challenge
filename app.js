@@ -29,6 +29,8 @@ const MIGRATION_KEY = "fitness_done_migrated_to_firebase_v1";
 const COLLECTION_NAME = "exercises";
 const USERS_COLLECTION = "participants";
 const CHALLENGE_META_TYPE = "challenge-meta";
+const ADMIN_PASSWORD = "1234";
+const ADMIN_SESSION_KEY = "fitness_admin_unlocked_v1";
 const DELAY_PENALTY = 10;
 const DAY_MS = 24 * 60 * 60 * 1000;
 const DAILY_QUOTES = [
@@ -129,7 +131,7 @@ function getLocalDone() {
 function getDone() { return currentDone || {}; }
 
 async function saveDone(done) {
-  currentDone = { ...done };
+  currentDone = upgradeLegacyDoneRecords(done);
   localStorage.setItem(DONE_KEY, JSON.stringify(currentDone));
 
   if (!currentUser) return;
@@ -168,6 +170,74 @@ function showUserLogin() {
       overlay.remove();
       resolve(name);
     });
+  });
+}
+
+function isAdminUnlocked() {
+  try {
+    return sessionStorage.getItem(ADMIN_SESSION_KEY) === "yes";
+  } catch (e) {
+    return false;
+  }
+}
+
+function setAdminUnlocked() {
+  try {
+    sessionStorage.setItem(ADMIN_SESSION_KEY, "yes");
+  } catch (e) { }
+}
+
+function ensureAdminAccess() {
+  return new Promise(resolve => {
+    if (!document.getElementById("exerciseForm")) {
+      resolve(true);
+      return;
+    }
+
+    if (isAdminUnlocked()) {
+      document.body.classList.remove("admin-locked");
+      resolve(true);
+      return;
+    }
+
+    document.body.classList.add("admin-locked");
+
+    const overlay = document.createElement("div");
+    overlay.id = "adminLoginOverlay";
+    overlay.className = "admin-login-overlay";
+    overlay.innerHTML = `
+      <form class="admin-login-card">
+        <div class="login-icon">🔐</div>
+        <h2>دخول الإعدادات</h2>
+        <p>اكتبي كلمة المرور لفتح صفحة الإعدادات.</p>
+        <input id="adminPasswordInput" type="password" autocomplete="current-password" placeholder="كلمة المرور" required>
+        <div id="adminPasswordError" class="admin-login-error"></div>
+        <button type="submit">فتح الإعدادات</button>
+      </form>
+    `;
+
+    document.body.appendChild(overlay);
+
+    overlay.querySelector("form").addEventListener("submit", e => {
+      e.preventDefault();
+      const input = document.getElementById("adminPasswordInput");
+      const error = document.getElementById("adminPasswordError");
+
+      if (input.value === ADMIN_PASSWORD) {
+        setAdminUnlocked();
+        document.body.classList.remove("admin-locked");
+        overlay.remove();
+        showPop("تم فتح صفحة الإعدادات بنجاح");
+        resolve(true);
+        return;
+      }
+
+      if (error) error.textContent = "كلمة المرور غير صحيحة";
+      showPop("كلمة المرور غير صحيحة", "error");
+      input.select();
+    });
+
+    setTimeout(() => document.getElementById("adminPasswordInput")?.focus(), 50);
   });
 }
 
@@ -252,6 +322,7 @@ function calcUserStats(data, done) {
     percent,
     commitment: calcCommitmentPercent(workouts, done),
     title: getProgressTitle(percent),
+    streak: calcCommitmentStreak(data, done),
     completed: completed.length,
     total: workouts.length,
     minutes: completed.reduce((sum, x) => sum + (Number(x.duration) || 0), 0),
@@ -298,6 +369,7 @@ async function renderParticipantsBoard(data, options = {}) {
     .sort((a, b) =>
       b.stats.commitment - a.stats.commitment ||
       b.stats.percent - a.stats.percent ||
+      b.stats.streak - a.stats.streak ||
       b.stats.minutes - a.stats.minutes ||
       String(a.user.name).localeCompare(String(b.user.name), "ar")
     );
@@ -328,6 +400,7 @@ async function renderParticipantsBoard(data, options = {}) {
             <div class="participant-meta">
               <span>✅ ${stats.completed} / ${stats.total} تمرين</span>
               <span>🎯 ${stats.commitment}% التزام</span>
+              <span>🔥 ${stats.streak} أيام سلسلة</span>
               <span>⏱ ${stats.minutes} دقيقة</span>
               <span>⭐ ${stats.completedWeeks} أسبوع</span>
               <span>📅 ${stats.weekLabel} ${stats.weekPercent}%</span>
@@ -483,6 +556,49 @@ function getExpectedDate(item) {
   const start = startOfDay(challengeStartDate(challengeNumber(item)));
   start.setDate(start.getDate() + absoluteDay - 1);
   return start;
+}
+
+function isFutureProgramDay(item) {
+  const expectedDate = getExpectedDate(item);
+  if (!expectedDate) return false;
+  return startOfDay(expectedDate).getTime() > startOfDay(new Date()).getTime();
+}
+
+function isFutureProgramDayItems(items) {
+  return items.length > 0 && isFutureProgramDay(items[0]);
+}
+
+function getTodayAbsoluteDay(challenge) {
+  const start = startOfDay(challengeStartDate(challenge));
+  const today = startOfDay(new Date());
+  return Math.floor((today - start) / DAY_MS) + 1;
+}
+
+function makeDoneRecord() {
+  return {
+    completed: true,
+    completedAt: new Date().toISOString()
+  };
+}
+
+function upgradeLegacyDoneRecords(done) {
+  const upgraded = { ...(done || {}) };
+  if (!cachedData.length) return upgraded;
+
+  cachedData.forEach(item => {
+    if (upgraded[item.id] !== true) return;
+
+    const expectedDate = getExpectedDate(item);
+    if (!expectedDate) return;
+
+    upgraded[item.id] = {
+      completed: true,
+      completedAt: expectedDate.toISOString(),
+      migratedFromLegacy: true
+    };
+  });
+
+  return upgraded;
 }
 
 function calcCompletionPercent(items, done) {
@@ -674,6 +790,153 @@ function renderProgramCalendar(data) {
     `).join("");
 }
 
+function renderTodayMission(data) {
+  const box = document.getElementById("todayMission");
+  if (!box) return;
+
+  const done = getDone();
+  const challenges = [...new Set(data.map(challengeNumber))].sort((a, b) => a - b);
+  const missions = challenges
+    .map(challenge => {
+      const todayAbsoluteDay = getTodayAbsoluteDay(challenge);
+      if (todayAbsoluteDay < 1) return "";
+
+      const items = data
+        .filter(item => challengeNumber(item) === Number(challenge) && getProgramAbsoluteDay(item) === todayAbsoluteDay)
+        .sort((a, b) => String(a.title || "").localeCompare(String(b.title || ""), "ar"));
+
+      if (items.length === 0) return "";
+
+      const sample = items[0];
+      const complete = items.every(item => isDone(done[item.id]));
+      const locked = isFutureProgramDayItems(items);
+
+      return `
+        <article class="today-mission-card ${complete ? "is-complete" : ""}">
+          <div class="today-mission-head">
+            <div>
+              <span>${challengeName(challenge)} - ${weekName(itemWeek(sample))}</span>
+              <h2>${complete ? "مهمة اليوم مكتملة ✓" : "مهمة اليوم"}</h2>
+            </div>
+            <strong>${dayName(itemProgramDay(sample))}</strong>
+          </div>
+
+          <div class="today-mission-list">
+            ${items.map(item => `
+              <div class="today-mission-item ${isDone(done[item.id]) ? "is-done" : ""}">
+                <span>${item.type === "rest" ? "🌸 يوم راحة" : escapeHtml(item.title)}</span>
+                <small>${isDone(done[item.id]) ? "مكتمل ✓" : (item.duration ? item.duration + " دقيقة" : "جاهز")}</small>
+              </div>
+            `).join("")}
+          </div>
+
+          ${locked
+          ? `<div class="locked-day-banner">🔒 يفتح في موعده</div>`
+          : `<button type="button" class="day-complete-btn ${complete ? "is-done" : ""}" ${complete ? "disabled" : ""} onclick="completeProgramDay(${challenge}, ${itemWeek(sample)}, ${itemProgramDay(sample)})">
+              ${complete ? "اليوم مكتمل ✓" : "تم إنجاز كل تمارين اليوم"}
+            </button>`
+        }
+        </article>
+      `;
+    })
+    .filter(Boolean);
+
+  box.innerHTML = `
+    <div class="section-title">
+      <h2>مهمة اليوم</h2>
+      <span>حسب تاريخ بداية كل تحدي</span>
+    </div>
+    ${missions.length ? missions.join("") : `<div class="empty mini-empty">لا توجد تمارين محددة لليوم.</div>`}
+  `;
+}
+
+function renderActivityFeed(data) {
+  const box = document.getElementById("activityFeed");
+  if (!box || !cachedParticipants) return;
+
+  const byId = data.reduce((map, item) => {
+    map[item.id] = item;
+    return map;
+  }, {});
+
+  const seen = new Set();
+  const activities = [];
+
+  cachedParticipants.forEach(user => {
+    const name = normalizeUserName(user.name);
+    if (!name || !user.done) return;
+
+    Object.entries(user.done).forEach(([id, record]) => {
+      const item = byId[id];
+      const completedAt = getCompletedAt(record);
+      if (!item || !completedAt || !isDone(record)) return;
+
+      const key = `${userDocId(name)}-${id}`;
+      if (seen.has(key)) return;
+      seen.add(key);
+
+      activities.push({
+        name,
+        item,
+        completedAt
+      });
+    });
+  });
+
+  activities.sort((a, b) => b.completedAt - a.completedAt);
+  const latest = activities.slice(0, 10);
+
+  if (latest.length === 0) {
+    box.innerHTML = "";
+    return;
+  }
+
+  box.innerHTML = `
+    <div class="section-title">
+      <h2>آخر الإنجازات</h2>
+      <span>آخر 10 تحديثات</span>
+    </div>
+    <div class="activity-list">
+      ${latest.map(activity => `
+        <div class="activity-item">
+          <strong>${escapeHtml(activity.name)}</strong>
+          <span>${activity.item.type === "rest" ? "أكملت يوم راحة" : "أنجزت " + escapeHtml(activity.item.title)}</span>
+          <small>${activity.completedAt.toLocaleDateString("ar")} ${activity.completedAt.toLocaleTimeString("ar", { hour: "2-digit", minute: "2-digit" })}</small>
+        </div>
+      `).join("")}
+    </div>
+  `;
+}
+
+function buildWhatsappReport(data) {
+  const done = getDone();
+  const stats = calcUserStats(data, done);
+
+  return [
+    `تقرير إنجاز ${currentUser || "المتسابقة"}`,
+    `نسبة الإنجاز: ${stats.percent}%`,
+    `نسبة الالتزام: ${stats.commitment}%`,
+    `سلسلة الالتزام: ${stats.streak} أيام متتالية`,
+    `الدقائق: ${stats.minutes} دقيقة`,
+    `الأسابيع المكتملة: ${stats.completedWeeks}`,
+    `اللقب: ${stats.title}`
+  ].join("\n");
+}
+
+function bindWhatsappReport(data) {
+  const btn = document.getElementById("copyWhatsappReport");
+  if (!btn) return;
+
+  btn.onclick = async () => {
+    try {
+      await navigator.clipboard.writeText(buildWhatsappReport(data));
+      showPop("تم نسخ تقرير واتساب بنجاح");
+    } catch (e) {
+      showPop("تعذر نسخ التقرير. تأكدي من سماح المتصفح بالنسخ.", "error");
+    }
+  };
+}
+
 function calcPercent(items, done) {
   return calcCompletionPercent(items, done);
 }
@@ -846,8 +1109,81 @@ function updateProgressBoard(data) {
   updateStats(data);
 }
 
+function getProgramDayItems(data, challenge, week, programDay) {
+  return workoutOnly(data).filter(item =>
+    challengeNumber(item) === Number(challenge) &&
+    itemWeek(item) === Number(week) &&
+    itemProgramDay(item) === Number(programDay)
+  );
+}
+
+function notifyDayProgress(dayItems, done) {
+  const remaining = dayItems.filter(item => !isDone(done[item.id]));
+
+  if (remaining.length === 0) {
+    setTimeout(confetti, 150);
+    showPop("ممتاز! اكتمل هذا اليوم 🎉");
+    return;
+  }
+
+  if (remaining.length === 1) {
+    showPop("باقي تمرين واحد وتكملين اليوم 🔥");
+  }
+}
+
+async function completeProgramDay(challenge, week, programDay) {
+  const scrollY = window.scrollY;
+  const allData = cachedData.length ? cachedData : await getData();
+  const dayItems = getProgramDayItems(allData, challenge, week, programDay);
+
+  if (dayItems.length === 0) return;
+
+  if (isFutureProgramDayItems(dayItems)) {
+    showPop("هذا اليوم لم يفتح بعد 🔒", "error");
+    return;
+  }
+
+  const done = getDone();
+  const alreadyComplete = dayItems.every(item => isDone(done[item.id]));
+
+  if (alreadyComplete) {
+    showPop("اليوم مكتمل ✓");
+    return;
+  }
+
+  dayItems.forEach(item => {
+    if (!isDone(done[item.id])) {
+      done[item.id] = makeDoneRecord();
+    }
+  });
+
+  await saveDone(done);
+  playDing();
+  notifyDayProgress(dayItems, done);
+
+  await renderViewer({
+    refreshData: false,
+    refreshParticipants: true,
+    showLoading: false
+  });
+
+  window.scrollTo({
+    top: scrollY,
+    behavior: "instant"
+  });
+}
+
 async function toggleDone(id) {
   const scrollY = window.scrollY;
+  const allData = cachedData.length ? cachedData : await getData();
+  const currentItem = allData.find(x => x.id === id);
+
+  if (!currentItem) return;
+
+  if (isFutureProgramDay(currentItem)) {
+    showPop("هذا اليوم لم يفتح بعد 🔒", "error");
+    return;
+  }
 
   const done = getDone();
   const wasDone = isDone(done[id]);
@@ -855,10 +1191,7 @@ async function toggleDone(id) {
   if (wasDone) {
     delete done[id];
   } else {
-    done[id] = {
-      completed: true,
-      completedAt: new Date().toISOString()
-    };
+    done[id] = makeDoneRecord();
   }
   await saveDone(done);
 
@@ -869,22 +1202,14 @@ async function toggleDone(id) {
     showPop("تم إلغاء إنجاز التمرين");
   }
 
-  const allData = await getData();
-  const currentItem = allData.find(x => x.id === id);
-
   if (!wasDone && currentItem) {
-    const dayItems = allData.filter(x =>
-      challengeNumber(x) === challengeNumber(currentItem) &&
-      itemWeek(x) === itemWeek(currentItem) &&
-      itemProgramDay(x) === itemProgramDay(currentItem)
+    const dayItems = getProgramDayItems(
+      allData,
+      challengeNumber(currentItem),
+      itemWeek(currentItem),
+      itemProgramDay(currentItem)
     );
-
-    const dayPercent = calcPercent(dayItems, done);
-
-    if (dayPercent === 100) {
-      setTimeout(confetti, 150);
-      showPop("ممتاز! اكتمل هذا اليوم");
-    }
+    notifyDayProgress(dayItems, done);
   }
 
   await renderViewer({
@@ -919,6 +1244,7 @@ async function renderViewer(options = {}) {
 
   const allData = refreshData || cachedData.length === 0 ? await getData() : cachedData;
   updateProgressBoard(allData);
+  renderTodayMission(allData);
 
   if (allData.length === 0) {
     daysBox.innerHTML = `
@@ -995,23 +1321,34 @@ async function renderViewer(options = {}) {
             const items = grouped[day];
             const allRest = items.every(i => i.type === "rest");
             const restItem = items[0];
+            const dayLocked = isFutureProgramDayItems(items);
+            const dayComplete = items.every(item => isDone(done[item.id]));
+            const dayCompleteButton = dayLocked
+              ? ""
+              : `<button type="button" class="day-complete-btn ${dayComplete ? "is-done" : ""}" ${dayComplete ? "disabled" : ""} onclick="completeProgramDay(${challenge}, ${selectedWeek}, ${day})">
+                  ${dayComplete ? "اليوم مكتمل ✓" : "تم إنجاز كل تمارين اليوم"}
+                </button>`;
 
             return `
-                      <article class="day-card">
+                      <article class="day-card ${dayLocked ? "is-locked" : ""} ${dayComplete ? "is-complete" : ""}">
                         <div class="day-head">
                           <div>
                             <h2>${dayName(day)}</h2>
                           </div>
                           <span class="week-label">${weekName(selectedWeek)}</span>
                         </div>
+                        ${dayLocked ? `<div class="locked-day-banner">🔒 يفتح في موعده</div>` : dayCompleteButton}
 
                         ${allRest
                 ? `
                             <div class="rest">
                               <div>يوم راحة 🌸</div>
-                              <button class="done-btn ${isDone(done[restItem.id]) ? "is-done" : ""}" onclick="toggleDone('${restItem.id}')">
-                                ${isDone(done[restItem.id]) ? "تم الإنجاز ✓" : "تم إنجاز يوم الراحة"}
-                              </button>
+                              ${dayLocked
+                  ? `<div class="locked-inline">🔒 يفتح في موعده</div>`
+                  : `<button class="done-btn ${isDone(done[restItem.id]) ? "is-done" : ""}" onclick="toggleDone('${restItem.id}')">
+                                    ${isDone(done[restItem.id]) ? "تم الإنجاز ✓" : "تم إنجاز يوم الراحة"}
+                                  </button>`
+                }
                             </div>
                           `
                 : ""
@@ -1033,9 +1370,12 @@ async function renderViewer(options = {}) {
                                     <span class="badge">${item.duration ? item.duration + " دقيقة" : "بدون مدة"}</span>
                                     <h3>${escapeHtml(item.title)}</h3>
                                     ${item.notes ? `<div class="notes">${escapeHtml(item.notes)}</div>` : ""}
-                                    <button class="done-btn ${isDone(done[item.id]) ? "is-done" : ""}" onclick="toggleDone('${item.id}')">
-                                      ${isDone(done[item.id]) ? "تم الإنجاز ✓" : "تم إنجاز التمرين"}
-                                    </button>
+                                    ${dayLocked
+                    ? `<div class="locked-inline">🔒 يفتح في موعده</div>`
+                    : `<button class="done-btn ${isDone(done[item.id]) ? "is-done" : ""}" onclick="toggleDone('${item.id}')">
+                                          ${isDone(done[item.id]) ? "تم الإنجاز ✓" : "تم إنجاز التمرين"}
+                                        </button>`
+                  }
                                   </div>
                                 </div>
                               `
@@ -1057,6 +1397,7 @@ async function renderViewer(options = {}) {
 
   updateProgressBoard(allData);
   await renderParticipantsBoard(allData, { refreshParticipants });
+  renderActivityFeed(allData);
 }
 
 async function changeChallengeWeek(challenge, step) {
@@ -1470,16 +1811,17 @@ window.changeChallengeWeek = changeChallengeWeek;
 window.openChallenge = openChallenge;
 window.closeChallenge = closeChallenge;
 window.editChallengeMeta = editChallengeMeta;
+window.completeProgramDay = completeProgramDay;
 
 async function bootstrap() {
-  renderDailyQuote();
-
   if (document.getElementById("exerciseForm")) {
-    initAdmin();
+    const hasAccess = await ensureAdminAccess();
+    if (hasAccess) await initAdmin();
     return;
   }
 
   if (document.getElementById("days") || document.getElementById("doneCount")) {
+    renderDailyQuote();
     await ensureCurrentUser();
   }
 
@@ -1490,6 +1832,7 @@ async function bootstrap() {
   if (document.getElementById("doneCount")) {
     const data = await getData();
     updateProgressBoard(data);
+    bindWhatsappReport(data);
     await renderParticipantsBoard(data);
   }
 }

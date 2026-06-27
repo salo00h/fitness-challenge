@@ -130,6 +130,152 @@ nav a {
   line-height: 1.7;
 }
 
+.section-title {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.section-title h2 {
+  margin: 0;
+  color: var(--text);
+  font-size: 26px;
+}
+
+.section-title span {
+  color: var(--pink);
+  background: var(--soft);
+  border-radius: 999px;
+  padding: 7px 12px;
+  font-weight: bold;
+  font-size: 13px;
+}
+
+.today-mission,
+.activity-feed {
+  margin: 0 0 22px;
+}
+
+.today-mission-card,
+.activity-feed {
+  background: rgba(255, 255, 255, .94);
+  border: 1px solid #ffd1df;
+  border-radius: 26px;
+  padding: 20px;
+  box-shadow: 0 14px 34px rgba(255, 11, 95, .08);
+}
+
+.today-mission-card {
+  display: grid;
+  gap: 14px;
+}
+
+.today-mission-card+.today-mission-card {
+  margin-top: 14px;
+}
+
+.today-mission-card.is-complete {
+  background: linear-gradient(135deg, #fff, #f0fff6);
+  border-color: #bbf7d0;
+}
+
+.today-mission-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  align-items: center;
+}
+
+.today-mission-head span {
+  display: block;
+  color: var(--muted);
+  font-weight: bold;
+  margin-bottom: 5px;
+}
+
+.today-mission-head h2 {
+  margin: 0;
+  font-size: 28px;
+  color: var(--pink);
+}
+
+.today-mission-head strong {
+  color: var(--pink);
+  background: var(--soft);
+  border-radius: 999px;
+  padding: 8px 13px;
+}
+
+.today-mission-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 10px;
+}
+
+.today-mission-item {
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 11px;
+  background: #fafafa;
+  font-weight: bold;
+}
+
+.today-mission-item span,
+.today-mission-item small {
+  display: block;
+}
+
+.today-mission-item small {
+  color: var(--muted);
+  margin-top: 4px;
+}
+
+.today-mission-item.is-done {
+  background: var(--green-soft);
+  border-color: #bbf7d0;
+}
+
+.today-mission-item.is-done small {
+  color: var(--green);
+}
+
+.activity-list {
+  display: grid;
+  gap: 10px;
+}
+
+.activity-item {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 10px;
+  background: #fff7fa;
+  border: 1px solid #ffd1df;
+  border-radius: 16px;
+  padding: 11px 13px;
+}
+
+.activity-item strong {
+  color: var(--pink);
+}
+
+.activity-item span {
+  color: var(--text);
+  font-weight: bold;
+}
+
+.activity-item small {
+  color: var(--muted);
+  font-weight: bold;
+}
+
+.mini-empty {
+  padding: 16px;
+  border-radius: 18px;
+}
+
 .countdown-card,
 .trophy-box {
   background: white;
@@ -409,6 +555,39 @@ button:hover {
   background: var(--green);
 }
 
+.day-complete-btn {
+  width: 100%;
+  margin: 0 0 14px;
+  background: linear-gradient(135deg, var(--pink), var(--pink2));
+}
+
+.day-complete-btn.is-done,
+.day-complete-btn:disabled {
+  background: var(--green);
+  cursor: default;
+  opacity: .92;
+}
+
+.day-card.is-locked {
+  background: linear-gradient(180deg, #fff, #f8f8f8);
+  border-color: #e5e7eb;
+}
+
+.locked-day-banner,
+.locked-inline {
+  border: 1px dashed #d1d5db;
+  border-radius: 16px;
+  padding: 12px;
+  background: #f8fafc;
+  color: var(--muted);
+  font-weight: bold;
+  text-align: center;
+}
+
+.locked-day-banner {
+  margin-bottom: 14px;
+}
+
 .rest {
   padding: 18px;
   border: 1px dashed var(--pink);
@@ -613,7 +792,7 @@ textarea {
   position: fixed;
   top: 18px;
   left: 18px;
-  z-index: 10000;
+  z-index: 100000;
   display: grid;
   gap: 10px;
   pointer-events: none;
@@ -644,6 +823,62 @@ textarea {
 
 .pop-toast.is-error {
   background: linear-gradient(135deg, #d90429, #ff5c7a);
+}
+
+.admin-locked main.container {
+  display: none;
+}
+
+.admin-login-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 99998;
+  background: rgba(255, 226, 236, .78);
+  backdrop-filter: blur(14px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.admin-login-card {
+  width: min(430px, 100%);
+  background: white;
+  border: 1px solid #ffd1df;
+  border-radius: 28px;
+  padding: 28px;
+  text-align: center;
+  box-shadow: 0 24px 70px rgba(255, 11, 95, .22);
+}
+
+.admin-login-card h2 {
+  margin: 0 0 8px;
+  color: var(--pink);
+  font-size: 30px;
+}
+
+.admin-login-card p {
+  margin: 0 0 18px;
+  color: var(--muted);
+  line-height: 1.8;
+}
+
+.admin-login-card input {
+  text-align: center;
+  font-weight: bold;
+  font-size: 18px;
+}
+
+.admin-login-card button {
+  width: 100%;
+  margin-top: 14px;
+}
+
+.admin-login-error {
+  min-height: 22px;
+  margin-top: 8px;
+  color: #d90429;
+  font-weight: bold;
 }
 
 @keyframes fall {
@@ -863,6 +1098,12 @@ textarea {
   font-size: 34px;
 }
 
+.whatsapp-report-btn {
+  margin-top: 16px;
+  background: linear-gradient(135deg, #16a34a, #22c55e);
+  box-shadow: 0 12px 26px rgba(22, 163, 74, .18);
+}
+
 .stats-page .stat-card,
 .stats-page .progress-card,
 .achievement-card,
@@ -1066,6 +1307,25 @@ textarea {
 
   .daily-quote strong {
     font-size: 18px;
+  }
+
+  .section-title {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .today-mission-head,
+  .activity-item {
+    grid-template-columns: 1fr;
+  }
+
+  .today-mission-head {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .activity-item {
+    display: grid;
   }
 
   .stats-hero {
