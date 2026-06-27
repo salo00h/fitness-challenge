@@ -1034,6 +1034,7 @@ textarea {
       var(--pink2));
   transition: width .4s ease;
 }
+
 /* نظام المتسابقات */
 .login-overlay {
   position: fixed;
