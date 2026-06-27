@@ -400,6 +400,39 @@ function workoutOnly(data) {
   return data;
 }
 
+function itemWeek(item) {
+  return Number(item.week);
+}
+
+function itemProgramDay(item) {
+  return Number(item.programDay);
+}
+
+function dayKey(item) {
+  const challenge = challengeNumber(item);
+  const week = itemWeek(item);
+  const day = itemProgramDay(item);
+  if (!Number.isFinite(challenge) || !Number.isFinite(week) || !Number.isFinite(day)) return "";
+  return `${challenge}-${week}-${day}`;
+}
+
+function weekKey(item) {
+  const challenge = challengeNumber(item);
+  const week = itemWeek(item);
+  if (!Number.isFinite(challenge) || !Number.isFinite(week)) return "";
+  return `${challenge}-${week}`;
+}
+
+function groupByKey(items, keyFn) {
+  return workoutOnly(items).reduce((groups, item) => {
+    const key = keyFn(item);
+    if (!key) return groups;
+    if (!groups[key]) groups[key] = [];
+    groups[key].push(item);
+    return groups;
+  }, {});
+}
+
 function calcPercent(items, done) {
   const workouts = workoutOnly(items);
   if (workouts.length === 0) return 0;
@@ -485,32 +518,18 @@ function challengeStartDate() {
   return new Date(start);
 }
 
-function updateCountdown() {
+function updateCountdown(data = cachedData) {
   const box = document.getElementById("countdownText");
   if (!box) return;
 
-  const dayKeys = [
-    ...new Set(
-      cachedData
-        .map(x => `${Number(x.week)}-${Number(x.programDay)}`)
-        .filter(key => !key.includes("NaN"))
-    )
-  ];
-
+  const done = getDone();
+  const dayGroups = groupByKey(data, dayKey);
+  const dayKeys = Object.keys(dayGroups);
   const totalDays = dayKeys.length || CHALLENGE_DAYS;
 
-  const done = getDone();
-
-  const completedDays = dayKeys.filter(key => {
-    const [week, day] = key.split("-").map(Number);
-
-    const dayItems = cachedData.filter(x =>
-      Number(x.week) === week &&
-      Number(x.programDay) === day
-    );
-
-    return dayItems.length > 0 && dayItems.every(x => done[x.id]);
-  }).length;
+  const completedDays = dayKeys.filter(key =>
+    dayGroups[key].length > 0 && dayGroups[key].every(x => done[x.id])
+  ).length;
 
   const daysLeft = Math.max(0, totalDays - completedDays);
 
@@ -518,11 +537,14 @@ function updateCountdown() {
 }
 
 function getCompletedWeeks(data, done) {
-  const weeks = [...new Set(data.map(x => Number(x.week)))].sort((a, b) => a - b);
-  return weeks.filter(week => {
-    const weekItems = workoutOnly(data.filter(x => Number(x.week) === week));
-    return weekItems.length > 0 && weekItems.every(x => done[x.id]);
-  });
+  const weekGroups = groupByKey(data, weekKey);
+  return Object.keys(weekGroups)
+    .filter(key => weekGroups[key].length > 0 && weekGroups[key].every(x => done[x.id]))
+    .map(key => {
+      const [challenge, week] = key.split("-").map(Number);
+      return { key, challenge, week };
+    })
+    .sort((a, b) => a.challenge - b.challenge || a.week - b.week);
 }
 
 function updateStats(data) {
@@ -536,24 +558,25 @@ function updateStats(data) {
   const doneMinutes = document.getElementById("doneMinutes");
   const doneWeeks = document.getElementById("doneWeeks");
 
-  if (doneCount) doneCount.textContent = completed.length;
+  if (doneCount) doneCount.textContent = `${completed.length} / ${workouts.length}`;
   if (doneMinutes) doneMinutes.textContent = minutes;
   if (doneWeeks) doneWeeks.textContent = completedWeeks.length;
 
   const weekStars = document.getElementById("weekStars");
   if (weekStars) {
     weekStars.innerHTML = completedWeeks.length
-      ? completedWeeks.map(w => `<span>⭐ ${weekName(w)} مكتمل</span>`).join("")
+      ? completedWeeks.map(w => `<span>⭐ ${challengeName(w.challenge)} - ${weekName(w.week)} مكتمل</span>`).join("")
       : `<span class="muted-star">أكمل أسبوع كامل لتحصل على نجمة ⭐</span>`;
   }
 }
 
 function updateProgressBoard(data) {
   const done = getDone();
+  const workouts = workoutOnly(data);
 
-  const weekItems = data.filter(x => Number(x.week) === Number(currentWeek));
-  const monthItems = data.filter(x => Number(x.week) >= 1 && Number(x.week) <= 4);
-  const challengeItems = data;
+  const weekItems = workouts.filter(x => itemWeek(x) === Number(currentWeek));
+  const monthItems = workouts.filter(x => itemWeek(x) >= 1 && itemWeek(x) <= 4);
+  const challengeItems = workouts;
   const challengePercent = calcPercent(challengeItems, done);
 
   setProgress("weekPercent", "weekBar", calcPercent(weekItems, done));
@@ -569,7 +592,7 @@ function updateProgressBoard(data) {
     }
   }
 
-  updateCountdown();
+  updateCountdown(data);
   updateStats(data);
 }
 
@@ -594,8 +617,9 @@ async function toggleDone(id) {
 
   if (!wasDone && currentItem) {
     const dayItems = allData.filter(x =>
-      Number(x.week) === Number(currentItem.week) &&
-      Number(x.programDay) === Number(currentItem.programDay)
+      challengeNumber(x) === challengeNumber(currentItem) &&
+      itemWeek(x) === itemWeek(currentItem) &&
+      itemProgramDay(x) === itemProgramDay(currentItem)
     );
 
     const dayPercent = calcPercent(dayItems, done);
@@ -666,7 +690,6 @@ async function renderViewer(options = {}) {
       .filter(x => Number(x.week) === Number(selectedWeek))
       .sort((a, b) => Number(a.programDay) - Number(b.programDay));
 
-    const weekPercent = calcPercent(weekData, done);
     const isOpen = Number(activeChallenge) === Number(challenge);
     const meta = getChallengeMeta(challenge);
     const metaDescription = meta.description || "وصف التحدي يظهر هنا من صفحة الإعدادات";
@@ -704,7 +727,7 @@ async function renderViewer(options = {}) {
 
             <div class="week-nav challenge-week-nav">
               <button type="button" onclick="changeChallengeWeek(${challenge}, -1)">الأسبوع السابق</button>
-              <strong>${weekName(selectedWeek)} <small>(${weekPercent}%)</small></strong>
+              <strong>${weekName(selectedWeek)}</strong>
               <button type="button" onclick="changeChallengeWeek(${challenge}, 1)">الأسبوع التالي</button>
             </div>
 
@@ -714,7 +737,6 @@ async function renderViewer(options = {}) {
                   ${Object.keys(grouped).sort((a, b) => a - b).map(day => {
             const items = grouped[day];
             const allRest = items.every(i => i.type === "rest");
-            const dayPercent = calcPercent(items, done);
             const restItem = items[0];
 
             return `
@@ -722,10 +744,6 @@ async function renderViewer(options = {}) {
                         <div class="day-head">
                           <div>
                             <h2>${dayName(day)}</h2>
-                            <span class="day-progress">إنجاز اليوم: ${dayPercent}%</span>
-                            <div class="day-progress-bar">
-                              <div class="day-progress-fill" style="width:${dayPercent}%"></div>
-                            </div>
                           </div>
                           <span class="week-label">${weekName(selectedWeek)}</span>
                         </div>
@@ -781,6 +799,7 @@ async function renderViewer(options = {}) {
   }).join("");
 
   updateProgressBoard(allData);
+  await renderParticipantsBoard(allData, { refreshParticipants });
 }
 
 async function changeChallengeWeek(challenge, step) {
