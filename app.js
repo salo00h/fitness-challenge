@@ -28,10 +28,12 @@ const USER_KEY = "fitness_current_user_v1";
 const MIGRATION_KEY = "fitness_done_migrated_to_firebase_v1";
 const COLLECTION_NAME = "exercises";
 const USERS_COLLECTION = "participants";
+const CHALLENGE_META_TYPE = "challenge-meta";
 let currentWeek = 1;
 let currentWeeksByChallenge = {};
 let activeChallenge = null;
 let cachedData = [];
+let cachedChallengeMeta = {};
 let cachedParticipants = null;
 let currentUser = null;
 let currentDone = {};
@@ -41,7 +43,14 @@ const CHALLENGE_DAYS = 30;
 
 async function getData() {
   const snap = await getDocs(collection(db, COLLECTION_NAME));
-  cachedData = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  const docs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  cachedChallengeMeta = docs
+    .filter(isChallengeMeta)
+    .reduce((meta, item) => {
+      meta[String(challengeNumber(item))] = item;
+      return meta;
+    }, {});
+  cachedData = docs.filter(item => !isChallengeMeta(item));
   return cachedData;
 }
 
@@ -51,6 +60,39 @@ async function saveExercise(item) {
 
 async function deleteExercise(id) {
   await deleteDoc(doc(db, COLLECTION_NAME, id));
+}
+
+function challengeMetaId(challenge) {
+  return `challenge_meta_${Number(challenge) || 1}`;
+}
+
+function isChallengeMeta(item) {
+  return item && item.type === CHALLENGE_META_TYPE;
+}
+
+function getChallengeMeta(challenge) {
+  return cachedChallengeMeta[String(Number(challenge) || 1)] || {};
+}
+
+async function saveChallengeMeta(challenge, data) {
+  const number = Number(challenge) || 1;
+  const item = {
+    id: challengeMetaId(number),
+    type: CHALLENGE_META_TYPE,
+    challenge: number,
+    image: String(data.image || "").trim(),
+    description: String(data.description || "").trim(),
+    updatedAt: new Date().toISOString()
+  };
+
+  await setDoc(doc(db, COLLECTION_NAME, item.id), item);
+  cachedChallengeMeta[String(number)] = item;
+}
+
+async function deleteChallengeMeta(challenge) {
+  const number = Number(challenge) || 1;
+  await deleteDoc(doc(db, COLLECTION_NAME, challengeMetaId(number)));
+  delete cachedChallengeMeta[String(number)];
 }
 
 function normalizeUserName(name) {
@@ -602,6 +644,9 @@ async function renderViewer(options = {}) {
     const totalCount = challengeWorkouts.length;
     const weekPercent = calcPercent(weekData, done);
     const isOpen = Number(activeChallenge) === Number(challenge);
+    const meta = getChallengeMeta(challenge);
+    const metaDescription = meta.description || "وصف التحدي يظهر هنا من صفحة الإعدادات";
+    const metaImage = meta.image || challengePlaceholder(challenge);
 
     const grouped = {};
     if (isOpen) {
@@ -613,11 +658,17 @@ async function renderViewer(options = {}) {
 
     return `
       <section class="challenge-box card ${isOpen ? "is-open" : "is-closed"}" data-challenge="${challenge}">
+        <div class="challenge-cover">
+          <img src="${escapeHtml(metaImage)}" alt="${challengeName(challenge)}">
+          <span>${challengeName(challenge)}</span>
+        </div>
+
         <div class="challenge-head">
           <div>
             <span class="challenge-kicker">🔥 برنامج مستقل</span>
             <h2>${challengeName(challenge)}</h2>
-            <p>${completedCount} من ${totalCount} تمرين مكتمل</p>
+            <p class="challenge-description">${escapeHtml(metaDescription)}</p>
+            <p class="challenge-count">${completedCount} من ${totalCount} تمرين مكتمل</p>
           </div>
 
           <div class="challenge-progress">
@@ -730,9 +781,127 @@ async function changeChallengeWeek(challenge, step) {
   });
 }
 
+function getAdminChallengeNumbers() {
+  const numbers = new Set([1, 2, 3, 4, 5]);
+  cachedData.forEach(item => numbers.add(challengeNumber(item)));
+  Object.keys(cachedChallengeMeta).forEach(challenge => numbers.add(Number(challenge)));
+  return [...numbers].filter(Boolean).sort((a, b) => a - b);
+}
+
+function populateChallengeMetaOptions() {
+  const select = document.getElementById("metaChallenge");
+  if (!select) return;
+
+  const current = Number(select.value) || 1;
+  const numbers = getAdminChallengeNumbers();
+  select.innerHTML = numbers
+    .map(challenge => `<option value="${challenge}">${challengeName(challenge)}</option>`)
+    .join("");
+  select.value = numbers.includes(current) ? String(current) : String(numbers[0] || 1);
+}
+
+function updateChallengeImagePreview() {
+  const select = document.getElementById("metaChallenge");
+  const input = document.getElementById("challengeImage");
+  const preview = document.getElementById("challengeImagePreview");
+  if (!select || !input || !preview) return;
+
+  const challenge = Number(select.value) || 1;
+  const image = input.value.trim() || challengePlaceholder(challenge);
+  preview.innerHTML = `
+    <img src="${escapeHtml(image)}" alt="${challengeName(challenge)}">
+    <span>${challengeName(challenge)}</span>
+  `;
+}
+
+function fillChallengeMetaForm(challenge) {
+  const select = document.getElementById("metaChallenge");
+  const imageInput = document.getElementById("challengeImage");
+  const descriptionInput = document.getElementById("challengeDescription");
+  if (!select || !imageInput || !descriptionInput) return;
+
+  const number = Number(challenge) || 1;
+  const meta = getChallengeMeta(number);
+  select.value = String(number);
+  imageInput.value = meta.image || "";
+  descriptionInput.value = meta.description || "";
+  updateChallengeImagePreview();
+}
+
+function renderChallengeMetaList() {
+  const list = document.getElementById("challengeMetaList");
+  if (!list) return;
+
+  populateChallengeMetaOptions();
+
+  list.innerHTML = getAdminChallengeNumbers().map(challenge => {
+    const meta = getChallengeMeta(challenge);
+    const image = meta.image || challengePlaceholder(challenge);
+    const description = meta.description || "لم يتم إضافة وصف بعد";
+
+    return `
+      <article class="challenge-meta-card">
+        <img src="${escapeHtml(image)}" alt="${challengeName(challenge)}">
+        <div>
+          <strong>${challengeName(challenge)}</strong>
+          <p>${escapeHtml(description)}</p>
+        </div>
+        <button type="button" onclick="editChallengeMeta(${challenge})">تعديل</button>
+      </article>
+    `;
+  }).join("");
+}
+
+function editChallengeMeta(challenge) {
+  populateChallengeMetaOptions();
+  fillChallengeMetaForm(challenge);
+
+  const box = document.querySelector(".challenge-settings");
+  if (box) box.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+function initChallengeMetaAdmin() {
+  const form = document.getElementById("challengeMetaForm");
+  if (!form) return;
+
+  const select = document.getElementById("metaChallenge");
+  const imageInput = document.getElementById("challengeImage");
+  const clearBtn = document.getElementById("clearChallengeMeta");
+
+  select.addEventListener("change", () => fillChallengeMetaForm(select.value));
+  imageInput.addEventListener("input", updateChallengeImagePreview);
+
+  form.addEventListener("submit", async e => {
+    e.preventDefault();
+
+    const challenge = Number(select.value) || 1;
+    await saveChallengeMeta(challenge, {
+      image: imageInput.value,
+      description: document.getElementById("challengeDescription").value
+    });
+
+    renderChallengeMetaList();
+    fillChallengeMetaForm(challenge);
+  });
+
+  clearBtn.addEventListener("click", async () => {
+    const challenge = Number(select.value) || 1;
+    if (!confirm(`مسح صورة ووصف ${challengeName(challenge)}؟`)) return;
+
+    await deleteChallengeMeta(challenge);
+    renderChallengeMetaList();
+    fillChallengeMetaForm(challenge);
+  });
+
+  renderChallengeMetaList();
+  fillChallengeMetaForm(select.value || 1);
+}
+
 async function initAdmin() {
   const form = document.getElementById("exerciseForm");
   if (!form) return;
+
+  initChallengeMetaAdmin();
 
   const youtubeInput = document.getElementById("youtube");
   const previewBox = document.getElementById("previewBox");
@@ -805,6 +974,8 @@ async function renderAdminList() {
     Number(a.week) - Number(b.week) ||
     Number(a.programDay) - Number(b.programDay)
   );
+  renderChallengeMetaList();
+  fillChallengeMetaForm(document.getElementById("metaChallenge")?.value || 1);
 
   if (data.length === 0) {
     list.innerHTML = `<div class="empty card">لا توجد بيانات حتى الآن.</div>`;
@@ -855,6 +1026,27 @@ async function deleteItemFromAdmin(id) {
   await renderAdminList();
 }
 
+function challengePlaceholder(challenge) {
+  const title = challengeName(challenge);
+  return "data:image/svg+xml;charset=UTF-8," + encodeURIComponent(`
+    <svg xmlns='http://www.w3.org/2000/svg' width='900' height='520' viewBox='0 0 900 520'>
+      <defs>
+        <linearGradient id='g' x1='0' x2='1' y1='0' y2='1'>
+          <stop offset='0' stop-color='#ff0b5f'/>
+          <stop offset='1' stop-color='#ff9abe'/>
+        </linearGradient>
+      </defs>
+      <rect width='900' height='520' fill='url(#g)'/>
+      <circle cx='130' cy='100' r='120' fill='rgba(255,255,255,.18)'/>
+      <circle cx='770' cy='430' r='155' fill='rgba(255,255,255,.14)'/>
+      <text x='50%' y='48%' dominant-baseline='middle' text-anchor='middle'
+        font-family='Tahoma, Arial' font-size='58' font-weight='700' fill='white'>${title}</text>
+      <text x='50%' y='61%' dominant-baseline='middle' text-anchor='middle'
+        font-family='Tahoma, Arial' font-size='28' fill='white'>Fitness Challenge</text>
+    </svg>
+  `);
+}
+
 function placeholder() {
   return "data:image/svg+xml;charset=UTF-8," + encodeURIComponent(`
     <svg xmlns='http://www.w3.org/2000/svg' width='600' height='400'>
@@ -877,6 +1069,7 @@ window.deleteItemFromAdmin = deleteItemFromAdmin;
 window.changeChallengeWeek = changeChallengeWeek;
 window.openChallenge = openChallenge;
 window.closeChallenge = closeChallenge;
+window.editChallengeMeta = editChallengeMeta;
 
 async function bootstrap() {
   if (document.getElementById("exerciseForm")) {

@@ -24,6 +24,41 @@
       <p>النجاح يبدأ بخطوة، ابدأ التحدي الآن. 💪🔥</p>
     </section>
 
+    <section class="card form challenge-settings">
+      <h2>إعدادات التحديات</h2>
+      <form id="challengeMetaForm">
+        <div class="grid2">
+          <div>
+            <label>التحدي</label>
+            <select id="metaChallenge">
+              <option value="1">التحدي الأول</option>
+              <option value="2">التحدي الثاني</option>
+              <option value="3">التحدي الثالث</option>
+              <option value="4">التحدي الرابع</option>
+              <option value="5">التحدي الخامس</option>
+            </select>
+          </div>
+
+          <div>
+            <label>رابط صورة التحدي</label>
+            <input id="challengeImage" type="url" placeholder="https://example.com/challenge.jpg" />
+          </div>
+        </div>
+
+        <div id="challengeImagePreview" class="challenge-image-preview"></div>
+
+        <label>وصف صغير تحت اسم التحدي</label>
+        <textarea id="challengeDescription" placeholder="مثال: تحدي تقوية الجسم خلال 4 أسابيع"></textarea>
+
+        <div class="actions">
+          <button type="submit">حفظ بيانات التحدي</button>
+          <button type="button" id="clearChallengeMeta" class="ghost">مسح بيانات هذا التحدي</button>
+        </div>
+      </form>
+
+      <div id="challengeMetaList" class="challenge-meta-list"></div>
+    </section>
+
     <form id="exerciseForm" class="card form">
       <input type="hidden" id="editId" />
 
