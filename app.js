@@ -83,7 +83,7 @@ async function saveChallengeMeta(challenge, data) {
     image: String(data.image || "").trim(),
     imageX: clampImageNumber(data.imageX, 0, 100, 50),
     imageY: clampImageNumber(data.imageY, 0, 100, 50),
-    imageZoom: clampImageNumber(data.imageZoom, 100, 170, 100),
+    imageZoom: clampImageNumber(data.imageZoom, 60, 170, 100),
     description: String(data.description || "").trim(),
     updatedAt: new Date().toISOString()
   };
@@ -455,6 +455,27 @@ function confetti() {
   }
 }
 
+function showPop(message, type = "success") {
+  let stack = document.getElementById("popStack");
+  if (!stack) {
+    stack = document.createElement("div");
+    stack.id = "popStack";
+    stack.className = "pop-stack";
+    document.body.appendChild(stack);
+  }
+
+  const pop = document.createElement("div");
+  pop.className = `pop-toast ${type === "error" ? "is-error" : "is-success"}`;
+  pop.textContent = message;
+  stack.appendChild(pop);
+
+  requestAnimationFrame(() => pop.classList.add("is-visible"));
+  setTimeout(() => {
+    pop.classList.remove("is-visible");
+    setTimeout(() => pop.remove(), 260);
+  }, 2600);
+}
+
 function challengeStartDate() {
   let start = localStorage.getItem("challenge_start_date");
   if (!start) {
@@ -563,6 +584,9 @@ async function toggleDone(id) {
 
   if (!wasDone) {
     playDing();
+    showPop("تم إنجاز التمرين بنجاح");
+  } else {
+    showPop("تم إلغاء إنجاز التمرين");
   }
 
   const allData = await getData();
@@ -578,6 +602,7 @@ async function toggleDone(id) {
 
     if (dayPercent === 100) {
       setTimeout(confetti, 150);
+      showPop("ممتاز! اكتمل هذا اليوم");
     }
   }
 
@@ -782,7 +807,7 @@ function clampImageNumber(value, min, max, fallback) {
 function getChallengeImageStyle(meta = {}) {
   const x = clampImageNumber(meta.imageX, 0, 100, 50);
   const y = clampImageNumber(meta.imageY, 0, 100, 50);
-  const zoom = clampImageNumber(meta.imageZoom, 100, 170, 100) / 100;
+  const zoom = clampImageNumber(meta.imageZoom, 60, 170, 100) / 100;
   return `object-position:${x}% ${y}%;transform-origin:${x}% ${y}%;transform:scale(${zoom});`;
 }
 
@@ -886,7 +911,7 @@ function fillChallengeMetaForm(challenge) {
   if (fileInput) fileInput.value = "";
   if (xInput) xInput.value = clampImageNumber(meta.imageX, 0, 100, 50);
   if (yInput) yInput.value = clampImageNumber(meta.imageY, 0, 100, 50);
-  if (zoomInput) zoomInput.value = clampImageNumber(meta.imageZoom, 100, 170, 100);
+  if (zoomInput) zoomInput.value = clampImageNumber(meta.imageZoom, 60, 170, 100);
   descriptionInput.value = meta.description || "";
   updateChallengeImagePreview();
 }
@@ -951,9 +976,10 @@ function initChallengeMetaAdmin() {
     try {
       imageInput.value = await compressImageFile(file);
       updateChallengeImagePreview();
+      showPop("تم تجهيز الصورة بنجاح");
     } catch (e) {
       imageInput.value = "";
-      alert("تعذر رفع الصورة. جرّبي صورة أخرى.");
+      showPop("تعذر رفع الصورة. جرّبي صورة أخرى.", "error");
       updateChallengeImagePreview();
     } finally {
       imageInput.placeholder = oldPlaceholder;
@@ -974,6 +1000,7 @@ function initChallengeMetaAdmin() {
 
     renderChallengeMetaList();
     fillChallengeMetaForm(challenge);
+    showPop("تم حفظ بيانات التحدي بنجاح");
   });
 
   clearBtn.addEventListener("click", async () => {
@@ -983,6 +1010,7 @@ function initChallengeMetaAdmin() {
     await deleteChallengeMeta(challenge);
     renderChallengeMetaList();
     fillChallengeMetaForm(challenge);
+    showPop("تم مسح بيانات التحدي");
   });
 
   renderChallengeMetaList();
@@ -1025,6 +1053,7 @@ async function initAdmin() {
     };
 
     await saveExercise(item);
+    showPop(editId ? "تم تعديل التمرين بنجاح" : "تم حفظ التمرين بنجاح");
 
     form.reset();
     previewBox.innerHTML = "";
@@ -1037,6 +1066,7 @@ async function initAdmin() {
     form.reset();
     previewBox.innerHTML = "";
     document.getElementById("editId").value = "";
+    showPop("تم إلغاء التعديل");
   };
 
   document.getElementById("clearAll").onclick = async () => {
@@ -1048,6 +1078,7 @@ async function initAdmin() {
       }
 
       await renderAdminList();
+      showPop("تم حذف كل التمارين");
     }
   };
 
@@ -1116,6 +1147,7 @@ async function deleteItemFromAdmin(id) {
   await saveDone(done);
 
   await renderAdminList();
+  showPop("تم حذف التمرين");
 }
 
 function challengePlaceholder(challenge) {

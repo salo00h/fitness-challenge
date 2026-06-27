@@ -567,6 +567,43 @@ textarea {
   pointer-events: none;
 }
 
+.pop-stack {
+  position: fixed;
+  top: 18px;
+  left: 18px;
+  z-index: 10000;
+  display: grid;
+  gap: 10px;
+  pointer-events: none;
+}
+
+.pop-toast {
+  min-width: 230px;
+  max-width: min(360px, calc(100vw - 36px));
+  padding: 13px 18px;
+  border-radius: 18px;
+  color: white;
+  font-weight: bold;
+  text-align: right;
+  box-shadow: 0 18px 38px rgba(255, 11, 95, .24);
+  transform: translateY(-12px) scale(.94);
+  opacity: 0;
+  transition: .25s ease;
+}
+
+.pop-toast.is-visible {
+  transform: translateY(0) scale(1);
+  opacity: 1;
+}
+
+.pop-toast.is-success {
+  background: linear-gradient(135deg, var(--pink), var(--pink2));
+}
+
+.pop-toast.is-error {
+  background: linear-gradient(135deg, #d90429, #ff5c7a);
+}
+
 @keyframes fall {
   0% {
     transform: translateY(-40px) rotate(0deg);
