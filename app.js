@@ -32,8 +32,10 @@ const USERS_COLLECTION = "participants";
 const CHALLENGE_META_TYPE = "challenge-meta";
 const ADMIN_PASSWORD = "1234";
 const ADMIN_SESSION_KEY = "fitness_admin_unlocked_v1";
+const THEME_KEY = "fitness_theme_v1";
 const DELAY_PENALTY = 10;
 const DAY_MS = 24 * 60 * 60 * 1000;
+const AVATARS = ["🌸", "🔥", "💪", "🏆", "⭐", "🌷", "💖", "🦋", "👑", "✨"];
 const DAILY_QUOTES = [
   "الاستمرارية أهم من الكمال 💪",
   "خطوة صغيرة اليوم تصنع فرقًا كبيرًا غدًا 🌷",
@@ -138,6 +140,54 @@ function clearUserSession() {
   localStorage.removeItem(AUTH_KEY);
 }
 
+function themeStorageKey() {
+  return currentUser ? `${THEME_KEY}_${userDocId(currentUser)}` : THEME_KEY;
+}
+
+function getStoredTheme() {
+  return localStorage.getItem(themeStorageKey()) || localStorage.getItem(THEME_KEY) || "light";
+}
+
+function applyTheme(theme = getStoredTheme()) {
+  const value = theme === "dark" ? "dark" : "light";
+  document.documentElement.dataset.theme = value;
+  localStorage.setItem(themeStorageKey(), value);
+  if (!currentUser) localStorage.setItem(THEME_KEY, value);
+}
+
+function toggleTheme() {
+  const next = getStoredTheme() === "dark" ? "light" : "dark";
+  applyTheme(next);
+  renderThemeToggle();
+}
+
+function renderThemeToggle() {
+  const topbar = document.querySelector(".topbar");
+  if (!topbar) return;
+
+  let button = document.getElementById("themeToggle");
+  if (!button) {
+    button = document.createElement("button");
+    button.id = "themeToggle";
+    button.type = "button";
+    button.className = "theme-toggle";
+    button.onclick = toggleTheme;
+    topbar.appendChild(button);
+  }
+
+  button.textContent = getStoredTheme() === "dark" ? "☀️ نهاري" : "🌙 ليلي";
+}
+
+function getDefaultAvatar(name = "") {
+  const normalized = normalizeUserName(name);
+  const index = [...normalized].reduce((sum, char) => sum + char.charCodeAt(0), 0) % AVATARS.length;
+  return AVATARS[index] || "🌸";
+}
+
+function getUserAvatar(user = {}) {
+  return user.avatar || getDefaultAvatar(user.name || currentUser);
+}
+
 async function hashPassword(password) {
   const data = new TextEncoder().encode(password);
   const hash = await crypto.subtle.digest("SHA-256", data);
@@ -226,6 +276,18 @@ function showUserLogin(prefillName = "") {
         <label for="loginName">الاسم</label>
         <input id="loginName" required placeholder="مثال: سارة" autocomplete="name" value="${escapeHtml(prefillName)}">
 
+        <div id="avatarFields" class="avatar-fields hidden">
+          <label>اختاري صورتك الرمزية</label>
+          <div class="avatar-options">
+            ${AVATARS.map((avatar, index) => `
+              <label class="avatar-option">
+                <input type="radio" name="loginAvatar" value="${avatar}" ${index === 0 ? "checked" : ""}>
+                <span>${avatar}</span>
+              </label>
+            `).join("")}
+          </div>
+        </div>
+
         <div id="passwordFields" class="password-fields hidden">
           <label for="loginPassword">كلمة المرور</label>
           <input id="loginPassword" type="password" autocomplete="current-password" placeholder="كلمة المرور">
@@ -249,6 +311,7 @@ function showUserLogin(prefillName = "") {
 
     const form = overlay.querySelector("form");
     const nameInput = document.getElementById("loginName");
+    const avatarFields = document.getElementById("avatarFields");
     const passwordFields = document.getElementById("passwordFields");
     const passwordInput = document.getElementById("loginPassword");
     const confirmWrap = document.getElementById("confirmPasswordWrap");
@@ -275,12 +338,14 @@ function showUserLogin(prefillName = "") {
       if (mode === "login") {
         title.textContent = "تسجيل الدخول";
         message.textContent = "اكتبي كلمة المرور للدخول";
+        avatarFields.classList.add("hidden");
         confirmWrap.classList.add("hidden");
         passwordInput.autocomplete = "current-password";
         submit.textContent = "دخول";
       } else {
         title.textContent = "إنشاء كلمة مرور";
         message.textContent = "أنشئي كلمة مرور لحفظ حسابك";
+        avatarFields.classList.remove("hidden");
         confirmWrap.classList.remove("hidden");
         passwordInput.autocomplete = "new-password";
         submit.textContent = "حفظ كلمة المرور";
@@ -299,6 +364,7 @@ function showUserLogin(prefillName = "") {
       submit.textContent = "متابعة";
       nameInput.readOnly = false;
       passwordFields.classList.add("hidden");
+      avatarFields.classList.add("hidden");
       back.classList.add("hidden");
       confirmWrap.classList.remove("hidden");
       passwordInput.value = "";
@@ -368,9 +434,11 @@ function showUserLogin(prefillName = "") {
         const passwordHash = await hashPassword(password);
         const passwordCreatedAt = new Date().toISOString();
         const lastLoginAt = passwordCreatedAt;
+        const avatar = document.querySelector("input[name='loginAvatar']:checked")?.value || getDefaultAvatar(selectedName);
 
         await setDoc(selectedRef, {
           name: selectedName,
+          avatar,
           passwordHash,
           passwordCreatedAt,
           lastLoginAt
@@ -380,6 +448,7 @@ function showUserLogin(prefillName = "") {
         currentUserProfile = {
           ...(selectedUser || {}),
           name: selectedName,
+          avatar,
           passwordHash,
           passwordCreatedAt,
           lastLoginAt
@@ -529,6 +598,23 @@ function renderUserBar() {
     clearUserSession();
     location.reload();
   };
+
+  renderGreetingMessage();
+}
+
+function renderGreetingMessage() {
+  if (!currentUser || document.getElementById("greetingMessage")) return;
+  const main = document.querySelector("main.container");
+  const anchor = document.getElementById("currentUserBar");
+  if (!main || !anchor) return;
+
+  const hour = new Date().getHours();
+  const greeting = hour < 12 ? "صباح القوة" : hour < 18 ? "مساء النشاط" : "ليلة إنجاز";
+  const box = document.createElement("section");
+  box.id = "greetingMessage";
+  box.className = "greeting-message";
+  box.innerHTML = `<strong>${greeting} يا ${escapeHtml(currentUser)}</strong><span>تمرين اليوم ينتظرك 🔥</span>`;
+  anchor.insertAdjacentElement("afterend", box);
 }
 
 function isCurrentUserName(name) {
@@ -621,6 +707,7 @@ async function renderParticipantsBoard(data, options = {}) {
 
   if (visibleUsers.length === 0) {
     board.innerHTML = "";
+    renderHallOfFame(data);
     return;
   }
 
@@ -628,14 +715,19 @@ async function renderParticipantsBoard(data, options = {}) {
     <h2>👭 تحدي البنات</h2>
     <div class="participants-grid">
       ${visibleUsers.map(({ user, stats, isMe }, index) => {
+    const badges = getUserBadges(stats, index);
     return `
           <article class="participant-card ${isMe ? "is-me" : ""}">
             <div class="participant-rank">${participantRankLabel(index)}</div>
             <div class="participant-head">
-              <strong>${escapeHtml(user.name)}</strong>
+              <div class="participant-name">
+                <span class="participant-avatar">${escapeHtml(getUserAvatar(user))}</span>
+                <strong>${escapeHtml(user.name)}</strong>
+              </div>
               <span>${isMe ? "أنتِ" : "المنافسة"}</span>
             </div>
             <div class="participant-title">${escapeHtml(stats.title)}</div>
+            ${badges.length ? `<div class="participant-badges">${badges.map(badge => `<span>${escapeHtml(badge)}</span>`).join("")}</div>` : ""}
 
             <div class="participant-percent">${stats.percent}%</div>
 
@@ -656,6 +748,8 @@ async function renderParticipantsBoard(data, options = {}) {
   }).join("")}
     </div>
   `;
+
+  renderHallOfFame(data);
 }
 
 function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2); }
@@ -820,6 +914,21 @@ function getTodayAbsoluteDay(challenge) {
   return Math.floor((today - start) / DAY_MS) + 1;
 }
 
+function getChallengeTotalDays(data, challenge) {
+  const days = data
+    .filter(item => challengeNumber(item) === Number(challenge))
+    .map(getProgramAbsoluteDay)
+    .filter(Boolean);
+  return Math.max(0, ...days);
+}
+
+function getJourneyInfo(data, challenge) {
+  const totalDays = getChallengeTotalDays(data, challenge) || CHALLENGE_DAYS;
+  const today = Math.max(1, Math.min(totalDays, getTodayAbsoluteDay(challenge)));
+  const percent = totalDays ? Math.round((today / totalDays) * 100) : 0;
+  return { today, totalDays, percent };
+}
+
 function makeDoneRecord() {
   return {
     completed: true,
@@ -956,6 +1065,15 @@ function calcCommitmentStreak(data, done) {
   }, 0);
 }
 
+function getUserBadges(stats, rankIndex = 99) {
+  const badges = [];
+  if (rankIndex === 0) badges.push("🏆 المركز الأول");
+  if (stats.commitment >= 90) badges.push("🔥 ملتزمة اليوم");
+  if (stats.completedWeeks > 0) badges.push("⭐ أسبوع مكتمل");
+  if (stats.percent >= 50 || stats.streak >= 3) badges.push("💪 أقوى تقدم");
+  return badges.slice(0, 4);
+}
+
 function getDailyQuote(date = new Date()) {
   const dayIndex = Math.floor(startOfDay(date).getTime() / DAY_MS);
   return DAILY_QUOTES[Math.abs(dayIndex) % DAILY_QUOTES.length];
@@ -1015,11 +1133,13 @@ function renderProgramCalendar(data) {
           ${byChallenge[String(challenge)].map(dayGroup => {
       const complete = isProgramDayComplete(dayGroup, done);
       const onTime = isProgramDayOnTime(dayGroup, done);
+      const late = complete && !onTime;
       const today = isCalendarToday(dayGroup);
       const classes = [
         "calendar-day",
         complete ? "is-complete" : "is-pending",
         onTime ? "is-on-time" : "",
+        late ? "is-late" : "",
         today ? "is-today" : ""
       ].filter(Boolean).join(" ");
 
@@ -1056,6 +1176,7 @@ function renderTodayMission(data) {
       const sample = items[0];
       const complete = items.every(item => isDone(done[item.id]));
       const locked = isFutureProgramDayItems(items);
+      const journey = getJourneyInfo(data, challenge);
 
       return `
         <article class="today-mission-card ${complete ? "is-complete" : ""}">
@@ -1065,6 +1186,11 @@ function renderTodayMission(data) {
               <h2>${complete ? "مهمة اليوم مكتملة ✓" : "مهمة اليوم"}</h2>
             </div>
             <strong>${dayName(itemProgramDay(sample))}</strong>
+          </div>
+
+          <div class="journey-counter">
+            <span>اليوم ${journey.today} من ${journey.totalDays} في الرحلة</span>
+            <div><i style="width:${journey.percent}%"></i></div>
           </div>
 
           <div class="today-mission-list">
@@ -1092,7 +1218,7 @@ function renderTodayMission(data) {
       <h2>مهمة اليوم</h2>
       <span>حسب تاريخ بداية كل تحدي</span>
     </div>
-    ${missions.length ? missions.join("") : `<div class="empty mini-empty">لا توجد تمارين محددة لليوم.</div>`}
+    ${missions.length ? missions.join("") : `<div class="empty-state mini-empty"><strong>🌷 يوم هادئ</strong><span>لا توجد تمارين محددة لليوم، استمتعي بالاستعداد للخطوة القادمة.</span></div>`}
   `;
 }
 
@@ -1154,19 +1280,115 @@ function renderActivityFeed(data) {
   `;
 }
 
+function renderHallOfFame(data) {
+  const box = document.getElementById("hallOfFame");
+  if (!box || !cachedParticipants) return;
+
+  const rows = cachedParticipants
+    .filter(user => user.name)
+    .map(user => ({
+      user,
+      stats: calcUserStats(data, user.done || {})
+    }))
+    .filter(row => row.stats.percent > 0 || isCurrentUserName(row.user.name));
+
+  if (rows.length === 0) {
+    box.innerHTML = "";
+    return;
+  }
+
+  const pick = metric => [...rows].sort((a, b) =>
+    b.stats[metric] - a.stats[metric] ||
+    b.stats.percent - a.stats.percent ||
+    b.stats.minutes - a.stats.minutes ||
+    String(a.user.name).localeCompare(String(b.user.name), "ar")
+  )[0];
+
+  const winners = [
+    { label: "أعلى التزام", metric: "commitment", suffix: "%", icon: "🎯" },
+    { label: "أعلى إنجاز", metric: "percent", suffix: "%", icon: "🏆" },
+    { label: "أطول سلسلة", metric: "streak", suffix: " أيام", icon: "🔥" },
+    { label: "أكثر دقائق", metric: "minutes", suffix: " دقيقة", icon: "⏱" }
+  ].map(item => ({ ...item, winner: pick(item.metric) }));
+
+  box.innerHTML = `
+    <div class="section-title">
+      <h2>Hall of Fame</h2>
+      <span>أفضل المشاركات حتى الآن</span>
+    </div>
+    <div class="hall-grid">
+      ${winners.map(item => `
+        <article class="hall-item">
+          <span>${item.icon}</span>
+          <div>
+            <small>${item.label}</small>
+            <strong>${escapeHtml(item.winner?.user.name || "لا يوجد")}</strong>
+            <em>${item.winner ? item.winner.stats[item.metric] + item.suffix : "0"}</em>
+          </div>
+        </article>
+      `).join("")}
+    </div>
+  `;
+}
+
+function renderSkeletonCards(target, count = 3) {
+  if (!target) return;
+  target.innerHTML = `
+    <div class="skeleton-grid">
+      ${Array.from({ length: count }).map(() => `
+        <article class="skeleton-card">
+          <i></i>
+          <span></span>
+          <b></b>
+          <small></small>
+        </article>
+      `).join("")}
+    </div>
+  `;
+}
+
 function buildWhatsappReport(data) {
   const done = getDone();
   const stats = calcUserStats(data, done);
 
   return [
-    `تقرير إنجاز ${currentUser || "المتسابقة"}`,
+    `🏋️‍♀️ تقرير إنجاز ${currentUser || "المتسابقة"}`,
     `نسبة الإنجاز: ${stats.percent}%`,
     `نسبة الالتزام: ${stats.commitment}%`,
     `سلسلة الالتزام: ${stats.streak} أيام متتالية`,
     `الدقائق: ${stats.minutes} دقيقة`,
     `الأسابيع المكتملة: ${stats.completedWeeks}`,
-    `اللقب: ${stats.title}`
+    `اللقب: ${stats.title}`,
+    "مستمرة وبقوة 🔥"
   ].join("\n");
+}
+
+function buildAchievementShareText(data) {
+  const stats = calcUserStats(data, getDone());
+  return [
+    `🔥 إنجاز جديد من ${currentUser}`,
+    `وصلت إلى ${stats.percent}% من التحدي`,
+    `اللقب الحالي: ${stats.title}`,
+    `نسبة الالتزام: ${stats.commitment}%`,
+    `السلسلة: ${stats.streak} أيام متتالية`,
+    "الخطوة الجاية أقوى 💪"
+  ].join("\n");
+}
+
+async function saveUserAvatar(avatar) {
+  if (!AVATARS.includes(avatar) || !currentUser) return;
+
+  await setDoc(doc(db, USERS_COLLECTION, userDocId(currentUser)), {
+    name: currentUser,
+    avatar,
+    updatedAt: new Date().toISOString()
+  }, { merge: true });
+
+  currentUserProfile = { ...(currentUserProfile || {}), avatar };
+  cachedParticipants = null;
+  showPop("تم حفظ الصورة الرمزية");
+  renderPersonalProfile(cachedData);
+  await renderParticipantsBoard(cachedData, { refreshParticipants: true });
 }
 
 function bindWhatsappReport(data) {
@@ -1191,21 +1413,44 @@ function renderPersonalProfile(data) {
   const stats = calcUserStats(data, done);
   const hasPassword = !!(currentUserProfile && currentUserProfile.passwordHash);
   const latestAchievement = getLatestAchievement(data, done);
+  const avatar = getUserAvatar(currentUserProfile || { name: currentUser });
+  const badges = getUserBadges(stats, 99);
 
   box.innerHTML = `
     <div class="profile-head">
-      <div>
-        <span>ملفي الشخصي</span>
-        <h2>${escapeHtml(currentUser)}</h2>
+      <div class="profile-identity">
+        <span class="profile-avatar">${escapeHtml(avatar)}</span>
+        <div>
+          <span>ملفي الشخصي</span>
+          <h2>${escapeHtml(currentUser)}</h2>
+        </div>
       </div>
-      <button type="button" id="changePasswordBtn" class="profile-password-btn">تغيير كلمة المرور</button>
+      <div class="profile-actions">
+        <button type="button" id="shareAchievementBtn" class="profile-password-btn">مشاركة الإنجاز</button>
+        <button type="button" id="changePasswordBtn" class="profile-password-btn">تغيير كلمة المرور</button>
+      </div>
     </div>
 
     <div class="account-security ${hasPassword ? "is-safe" : "is-warning"}">
       ${hasPassword ? "حسابك محمي" : "يرجى إنشاء كلمة مرور لحماية تقدمك"}
     </div>
 
+    <div class="avatar-picker">
+      <span>اختاري صورتك الرمزية</span>
+      <div class="avatar-options inline">
+        ${AVATARS.map(item => `
+          <button type="button" class="avatar-pick ${item === avatar ? "is-selected" : ""}" data-avatar="${item}">${item}</button>
+        `).join("")}
+      </div>
+    </div>
+
+    ${badges.length ? `<div class="profile-badges">${badges.map(badge => `<span>${escapeHtml(badge)}</span>`).join("")}</div>` : ""}
+
     <div class="profile-grid">
+      <div class="profile-ring-wrap">
+        <span>دائرة الإنجاز</span>
+        <div class="profile-ring" style="--progress:${stats.percent * 3.6}deg"><strong>${stats.percent}%</strong></div>
+      </div>
       <div><span>اللقب الحالي</span><strong>${escapeHtml(stats.title)}</strong></div>
       <div><span>نسبة الإنجاز</span><strong>${stats.percent}%</strong></div>
       <div><span>نسبة الالتزام</span><strong>${stats.commitment}%</strong></div>
@@ -1218,6 +1463,22 @@ function renderPersonalProfile(data) {
 
   const btn = document.getElementById("changePasswordBtn");
   if (btn) btn.onclick = showChangePasswordDialog;
+
+  const shareBtn = document.getElementById("shareAchievementBtn");
+  if (shareBtn) {
+    shareBtn.onclick = async () => {
+      try {
+        await navigator.clipboard.writeText(buildAchievementShareText(data));
+        showPop("تم نسخ رسالة المشاركة بنجاح");
+      } catch (e) {
+        showPop("تعذر نسخ رسالة المشاركة", "error");
+      }
+    };
+  }
+
+  document.querySelectorAll(".avatar-pick").forEach(button => {
+    button.onclick = () => saveUserAvatar(button.dataset.avatar);
+  });
 }
 
 function showChangePasswordDialog() {
@@ -1345,6 +1606,24 @@ function setProgress(idPercent, idBar, percent) {
   if (p) p.textContent = percent + "%";
   if (b) b.style.width = percent + "%";
 
+  const card = p?.closest(".progress-card");
+  if (card) {
+    card.style.setProperty("--progress", `${Number(percent) * 3.6}deg`);
+    let ring = card.querySelector(".mini-ring");
+    if (!ring) {
+      ring = document.createElement("div");
+      ring.className = "mini-ring";
+      ring.setAttribute("aria-hidden", "true");
+      card.prepend(ring);
+    }
+    card.classList.toggle("is-glowing", idPercent === "commitmentPercent" && Number(percent) >= 90);
+  }
+
+  const heroRing = p?.closest(".hero-ring");
+  if (heroRing) {
+    heroRing.style.setProperty("--progress", `${Number(percent) * 3.6}deg`);
+  }
+
   if (idPercent === "challengePercent") {
     const text = document.getElementById("challengePercentText");
     if (text) text.textContent = percent + "%";
@@ -1384,6 +1663,67 @@ function confetti() {
     document.body.appendChild(piece);
     setTimeout(() => piece.remove(), 2300);
   }
+}
+
+function strongConfetti() {
+  confetti();
+  setTimeout(confetti, 240);
+  setTimeout(confetti, 520);
+}
+
+function celebrationKey(kind, challenge, week = "") {
+  return `fitness_celebrated_${kind}_${userDocId(currentUser || "guest")}_${challenge}_${week}`;
+}
+
+function maybeCelebrateMilestones(data, item, done) {
+  if (!item || !isDone(done[item.id])) return;
+
+  const challenge = challengeNumber(item);
+  const week = itemWeek(item);
+  const weekItems = workoutOnly(data).filter(x =>
+    challengeNumber(x) === challenge && itemWeek(x) === week
+  );
+  const challengeItems = workoutOnly(data).filter(x => challengeNumber(x) === challenge);
+
+  if (weekItems.length && weekItems.every(x => isDone(done[x.id]))) {
+    const key = celebrationKey("week", challenge, week);
+    if (!localStorage.getItem(key)) {
+      localStorage.setItem(key, "yes");
+      setTimeout(strongConfetti, 180);
+      showPop(`🏆 اكتمل ${weekName(week)} من ${challengeName(challenge)}`);
+    }
+  }
+
+  if (challengeItems.length && challengeItems.every(x => isDone(done[x.id]))) {
+    const key = celebrationKey("challenge", challenge);
+    if (!localStorage.getItem(key)) {
+      localStorage.setItem(key, "yes");
+      setTimeout(() => showChallengeCertificate(challenge), 350);
+    }
+  }
+}
+
+function closeCertificate() {
+  document.getElementById("certificateOverlay")?.remove();
+}
+
+function showChallengeCertificate(challenge) {
+  closeCertificate();
+  strongConfetti();
+
+  const overlay = document.createElement("div");
+  overlay.id = "certificateOverlay";
+  overlay.className = "certificate-overlay";
+  overlay.innerHTML = `
+    <section class="certificate-card">
+      <span class="certificate-kicker">شهادة إنجاز</span>
+      <h2>مبروك يا ${escapeHtml(currentUser || "بطلة")}</h2>
+      <p>أكملتِ ${challengeName(challenge)} بقوة واستمرارية.</p>
+      <strong>🏆 ${getProgressTitle(100)}</strong>
+      <button type="button" onclick="closeCertificate()">إغلاق</button>
+    </section>
+  `;
+  document.body.appendChild(overlay);
 }
 
 function showPop(message, type = "success") {
@@ -1558,6 +1898,7 @@ async function completeProgramDay(challenge, week, programDay) {
   await saveDone(done);
   playDing();
   notifyDayProgress(dayItems, done);
+  maybeCelebrateMilestones(allData, dayItems[0], done);
 
   await renderViewer({
     refreshData: false,
@@ -1608,6 +1949,7 @@ async function toggleDone(id) {
       itemProgramDay(currentItem)
     );
     notifyDayProgress(dayItems, done);
+    maybeCelebrateMilestones(allData, currentItem, done);
   }
 
   await renderViewer({
@@ -1637,7 +1979,7 @@ async function renderViewer(options = {}) {
 
   const done = getDone();
   if (showLoading) {
-    daysBox.innerHTML = `<div class="empty card">جاري تحميل التمارين...</div>`;
+    renderSkeletonCards(daysBox, 3);
   }
 
   const allData = refreshData || cachedData.length === 0 ? await getData() : cachedData;
@@ -1646,8 +1988,9 @@ async function renderViewer(options = {}) {
 
   if (allData.length === 0) {
     daysBox.innerHTML = `
-      <div class="empty card">
-        لا توجد تمارين حتى الآن. أضفها من صفحة الإعدادات.
+      <div class="empty-state card">
+        <strong>🌷 لا توجد تمارين بعد</strong>
+        <span>ابدئي بإضافة التمارين من صفحة الإعدادات، وسنرتبها هنا كبطاقات تحديات جميلة.</span>
       </div>
     `;
     return;
@@ -2267,8 +2610,13 @@ window.closeChallenge = closeChallenge;
 window.editChallengeMeta = editChallengeMeta;
 window.completeProgramDay = completeProgramDay;
 window.resetParticipantPassword = resetParticipantPassword;
+window.toggleTheme = toggleTheme;
+window.closeCertificate = closeCertificate;
 
 async function bootstrap() {
+  applyTheme();
+  renderThemeToggle();
+
   if (document.getElementById("exerciseForm")) {
     const hasAccess = await ensureAdminAccess();
     if (hasAccess) await initAdmin();
@@ -2278,6 +2626,8 @@ async function bootstrap() {
   if (document.getElementById("days") || document.getElementById("doneCount")) {
     renderDailyQuote();
     await ensureCurrentUser();
+    applyTheme();
+    renderThemeToggle();
   }
 
   if (document.getElementById("days")) {
