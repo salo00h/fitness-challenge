@@ -48,6 +48,7 @@ let cachedData = [];
 let cachedChallengeMeta = {};
 let cachedParticipants = null;
 let currentUser = null;
+let currentUserProfile = null;
 let currentDone = {};
 
 // عدل هنا عدد أيام التحدي
@@ -143,6 +144,41 @@ async function hashPassword(password) {
   return [...new Uint8Array(hash)]
     .map(byte => byte.toString(16).padStart(2, "0"))
     .join("");
+}
+
+function isStrongEnoughPassword(password) {
+  return String(password || "").length >= 4;
+}
+
+function formatDateTime(value) {
+  if (!value) return "لم تسجل بعد";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "غير معروف";
+  return `${date.toLocaleDateString("ar")} ${date.toLocaleTimeString("ar", { hour: "2-digit", minute: "2-digit" })}`;
+}
+
+function getLatestAchievement(data, done) {
+  const byId = data.reduce((map, item) => {
+    map[item.id] = item;
+    return map;
+  }, {});
+
+  const latest = Object.entries(done || {})
+    .map(([id, record]) => ({
+      item: byId[id],
+      completedAt: getCompletedAt(record)
+    }))
+    .filter(entry => entry.item && entry.completedAt)
+    .sort((a, b) => b.completedAt - a.completedAt)[0];
+
+  if (!latest) return "لا يوجد إنجاز حديث";
+  return latest.item.type === "rest" ? "أكملت يوم راحة" : `أنجزت ${latest.item.title}`;
+}
+
+async function updateLastLogin(name) {
+  const lastLoginAt = new Date().toISOString();
+  await setDoc(doc(db, USERS_COLLECTION, userDocId(name)), { lastLoginAt }, { merge: true });
+  currentUserProfile = { ...(currentUserProfile || {}), lastLoginAt };
 }
 
 function getLocalDone() {
@@ -297,6 +333,13 @@ function showUserLogin(prefillName = "") {
           return;
         }
 
+        if (mode !== "login" && !isStrongEnoughPassword(password)) {
+          setError("كلمة المرور يجب ألا تقل عن 4 أحرف");
+          showPop("كلمة المرور يجب ألا تقل عن 4 أحرف", "error");
+          passwordInput.select();
+          return;
+        }
+
         if (mode === "login") {
           const passwordHash = await hashPassword(password);
 
@@ -308,6 +351,8 @@ function showUserLogin(prefillName = "") {
           }
 
           storeUserSession(selectedName);
+          currentUserProfile = { ...selectedUser, name: selectedName };
+          await updateLastLogin(selectedName);
           overlay.remove();
           resolve({ name: selectedName });
           return;
@@ -321,14 +366,24 @@ function showUserLogin(prefillName = "") {
         }
 
         const passwordHash = await hashPassword(password);
+        const passwordCreatedAt = new Date().toISOString();
+        const lastLoginAt = passwordCreatedAt;
 
         await setDoc(selectedRef, {
           name: selectedName,
           passwordHash,
-          passwordCreatedAt: new Date().toISOString()
+          passwordCreatedAt,
+          lastLoginAt
         }, { merge: true });
 
         storeUserSession(selectedName);
+        currentUserProfile = {
+          ...(selectedUser || {}),
+          name: selectedName,
+          passwordHash,
+          passwordCreatedAt,
+          lastLoginAt
+        };
         overlay.remove();
         showPop("تم حفظ كلمة المرور بنجاح");
         resolve({ name: selectedName });
@@ -424,13 +479,15 @@ async function ensureCurrentUser() {
   let ref = doc(db, USERS_COLLECTION, userDocId(currentUser));
   let snap = await getDoc(ref);
 
-  if (!snap.exists() && hasAuth) {
+  if (hasAuth && (!snap.exists() || !snap.data().passwordHash)) {
     clearUserSession();
     const login = await showUserLogin(currentUser);
     currentUser = login.name;
     ref = doc(db, USERS_COLLECTION, userDocId(currentUser));
     snap = await getDoc(ref);
   }
+
+  currentUserProfile = snap.exists() ? snap.data() : { name: currentUser };
 
   const firebaseDone = snap.exists() ? (snap.data().done || {}) : {};
   const localDone = getLocalDone();
@@ -513,6 +570,13 @@ function calcUserStats(data, done) {
   };
 }
 
+function participantRankLabel(index) {
+  if (index === 0) return "🥇 المركز الأول";
+  if (index === 1) return "🥈 المركز الثاني";
+  if (index === 2) return "🥉 المركز الثالث";
+  return `المركز ${index + 1}`;
+}
+
 async function renderParticipantsBoard(data, options = {}) {
   const { refreshParticipants = true } = options;
   const main = document.querySelector("main.container");
@@ -563,9 +627,10 @@ async function renderParticipantsBoard(data, options = {}) {
   board.innerHTML = `
     <h2>👭 تحدي البنات</h2>
     <div class="participants-grid">
-      ${visibleUsers.map(({ user, stats, isMe }) => {
+      ${visibleUsers.map(({ user, stats, isMe }, index) => {
     return `
           <article class="participant-card ${isMe ? "is-me" : ""}">
+            <div class="participant-rank">${participantRankLabel(index)}</div>
             <div class="participant-head">
               <strong>${escapeHtml(user.name)}</strong>
               <span>${isMe ? "أنتِ" : "المنافسة"}</span>
@@ -1118,6 +1183,157 @@ function bindWhatsappReport(data) {
   };
 }
 
+function renderPersonalProfile(data) {
+  const box = document.getElementById("personalProfile");
+  if (!box || !currentUser) return;
+
+  const done = getDone();
+  const stats = calcUserStats(data, done);
+  const hasPassword = !!(currentUserProfile && currentUserProfile.passwordHash);
+  const latestAchievement = getLatestAchievement(data, done);
+
+  box.innerHTML = `
+    <div class="profile-head">
+      <div>
+        <span>ملفي الشخصي</span>
+        <h2>${escapeHtml(currentUser)}</h2>
+      </div>
+      <button type="button" id="changePasswordBtn" class="profile-password-btn">تغيير كلمة المرور</button>
+    </div>
+
+    <div class="account-security ${hasPassword ? "is-safe" : "is-warning"}">
+      ${hasPassword ? "حسابك محمي" : "يرجى إنشاء كلمة مرور لحماية تقدمك"}
+    </div>
+
+    <div class="profile-grid">
+      <div><span>اللقب الحالي</span><strong>${escapeHtml(stats.title)}</strong></div>
+      <div><span>نسبة الإنجاز</span><strong>${stats.percent}%</strong></div>
+      <div><span>نسبة الالتزام</span><strong>${stats.commitment}%</strong></div>
+      <div><span>سلسلة الالتزام</span><strong>${stats.streak} أيام</strong></div>
+      <div><span>مجموع الدقائق</span><strong>${stats.minutes}</strong></div>
+      <div><span>أسابيع مكتملة</span><strong>${stats.completedWeeks}</strong></div>
+      <div class="profile-wide"><span>آخر إنجاز</span><strong>${escapeHtml(latestAchievement)}</strong></div>
+    </div>
+  `;
+
+  const btn = document.getElementById("changePasswordBtn");
+  if (btn) btn.onclick = showChangePasswordDialog;
+}
+
+function showChangePasswordDialog() {
+  const old = document.getElementById("passwordChangeOverlay");
+  if (old) old.remove();
+
+  const overlay = document.createElement("div");
+  overlay.id = "passwordChangeOverlay";
+  overlay.className = "login-overlay";
+  overlay.innerHTML = `
+    <form class="login-card password-change-card">
+      <div class="login-icon">🔑</div>
+      <h2>تغيير كلمة المرور</h2>
+      <p>اكتبي كلمة المرور الحالية ثم الجديدة.</p>
+
+      <label for="currentPassword">كلمة المرور الحالية</label>
+      <input id="currentPassword" type="password" autocomplete="current-password" required>
+
+      <label for="newPassword">كلمة المرور الجديدة</label>
+      <input id="newPassword" type="password" autocomplete="new-password" required>
+
+      <label for="newPasswordConfirm">تأكيد الجديدة</label>
+      <input id="newPasswordConfirm" type="password" autocomplete="new-password" required>
+
+      <div id="passwordChangeError" class="login-error"></div>
+
+      <div class="login-actions">
+        <button type="submit">حفظ كلمة المرور الجديدة</button>
+        <button type="button" class="ghost" id="cancelPasswordChange">إلغاء</button>
+      </div>
+    </form>
+  `;
+
+  document.body.appendChild(overlay);
+
+  const form = overlay.querySelector("form");
+  const currentInput = document.getElementById("currentPassword");
+  const nextInput = document.getElementById("newPassword");
+  const confirmInput = document.getElementById("newPasswordConfirm");
+  const errorBox = document.getElementById("passwordChangeError");
+
+  function setError(text) {
+    errorBox.textContent = text || "";
+  }
+
+  document.getElementById("cancelPasswordChange").onclick = () => overlay.remove();
+
+  form.addEventListener("submit", async e => {
+    e.preventDefault();
+
+    const currentPassword = currentInput.value;
+    const newPassword = nextInput.value;
+    const confirmPassword = confirmInput.value;
+
+    if (!isStrongEnoughPassword(newPassword)) {
+      setError("كلمة المرور الجديدة يجب ألا تقل عن 4 أحرف");
+      showPop("كلمة المرور الجديدة يجب ألا تقل عن 4 أحرف", "error");
+      nextInput.select();
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      setError("كلمتا المرور غير متطابقتين");
+      showPop("كلمتا المرور غير متطابقتين", "error");
+      confirmInput.select();
+      return;
+    }
+
+    try {
+      const ref = doc(db, USERS_COLLECTION, userDocId(currentUser));
+      const snap = await getDoc(ref);
+      const user = snap.exists() ? snap.data() : {};
+
+      if (!user.passwordHash) {
+        setError("يرجى إنشاء كلمة مرور لحماية تقدمك");
+        showPop("يرجى إنشاء كلمة مرور لحماية تقدمك", "error");
+        return;
+      }
+
+      const currentHash = await hashPassword(currentPassword);
+      if (currentHash !== user.passwordHash) {
+        setError("كلمة المرور الحالية غير صحيحة");
+        showPop("كلمة المرور الحالية غير صحيحة", "error");
+        currentInput.select();
+        return;
+      }
+
+      const passwordHash = await hashPassword(newPassword);
+      const passwordChangedAt = new Date().toISOString();
+
+      await setDoc(ref, {
+        passwordHash,
+        passwordCreatedAt: user.passwordCreatedAt || passwordChangedAt,
+        passwordChangedAt
+      }, { merge: true });
+
+      currentUserProfile = {
+        ...(currentUserProfile || {}),
+        ...user,
+        passwordHash,
+        passwordCreatedAt: user.passwordCreatedAt || passwordChangedAt,
+        passwordChangedAt
+      };
+
+      overlay.remove();
+      showPop("تم تغيير كلمة المرور بنجاح");
+      renderPersonalProfile(cachedData);
+    } catch (e) {
+      setError("تعذر تغيير كلمة المرور الآن");
+      showPop("تعذر تغيير كلمة المرور الآن", "error");
+    }
+  });
+
+  setTimeout(() => currentInput.focus(), 50);
+}
+
 function calcPercent(items, done) {
   return calcCompletionPercent(items, done);
 }
@@ -1260,6 +1476,7 @@ function updateStats(data) {
   }
 
   renderProgramCalendar(data);
+  renderPersonalProfile(data);
 }
 
 function updateProgressBoard(data) {
@@ -1881,6 +2098,7 @@ async function initAdmin() {
   };
 
   await renderAdminList();
+  await renderAdminParticipants();
 }
 
 
@@ -1917,6 +2135,61 @@ async function renderAdminList() {
       </div>
     </div>
   `).join("");
+}
+
+async function renderAdminParticipants() {
+  const box = document.getElementById("adminParticipantsBoard");
+  if (!box) return;
+
+  box.innerHTML = `<div class="empty card">جاري تحميل المشاركات...</div>`;
+
+  const snap = await getDocs(collection(db, USERS_COLLECTION));
+  const users = snap.docs
+    .map(d => ({ id: d.id, ...d.data() }))
+    .filter(user => user.name)
+    .sort((a, b) => normalizeUserName(a.name).localeCompare(normalizeUserName(b.name), "ar"));
+
+  if (users.length === 0) {
+    box.innerHTML = `<div class="empty card">لا توجد مشاركات حتى الآن.</div>`;
+    return;
+  }
+
+  box.innerHTML = users.map(user => {
+    const name = normalizeUserName(user.name);
+    const protectedText = user.passwordHash ? "محمي" : "يحتاج كلمة مرور";
+    const protectedClass = user.passwordHash ? "is-safe" : "is-warning";
+
+    return `
+      <article class="admin-participant-item">
+        <div>
+          <strong>${escapeHtml(name)}</strong>
+          <span class="${protectedClass}">${protectedText}</span>
+        </div>
+        <div class="admin-participant-meta">
+          <span>آخر دخول: ${formatDateTime(user.lastLoginAt)}</span>
+        </div>
+        <button type="button" class="ghost" onclick="resetParticipantPassword('${encodeURIComponent(name)}')">إعادة تعيين كلمة المرور</button>
+      </article>
+    `;
+  }).join("");
+}
+
+async function resetParticipantPassword(name) {
+  const normalized = normalizeUserName(decodeURIComponent(name || ""));
+  if (!normalized) return;
+  if (!confirm(`إعادة تعيين كلمة مرور ${normalized}؟`)) return;
+
+  await setDoc(doc(db, USERS_COLLECTION, userDocId(normalized)), {
+    name: normalized,
+    passwordHash: "",
+    passwordCreatedAt: "",
+    passwordChangedAt: "",
+    passwordResetAt: new Date().toISOString()
+  }, { merge: true });
+
+  cachedParticipants = null;
+  await renderAdminParticipants();
+  showPop("تمت إعادة تعيين كلمة المرور. ستنشئ المشاركة كلمة مرور جديدة عند الدخول القادم.");
 }
 
 function editItem(id) {
@@ -1993,6 +2266,7 @@ window.openChallenge = openChallenge;
 window.closeChallenge = closeChallenge;
 window.editChallengeMeta = editChallengeMeta;
 window.completeProgramDay = completeProgramDay;
+window.resetParticipantPassword = resetParticipantPassword;
 
 async function bootstrap() {
   if (document.getElementById("exerciseForm")) {
