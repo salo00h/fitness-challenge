@@ -879,6 +879,10 @@ textarea {
   min-height: 150px;
 }
 
+.dashboard-progress {
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
 .dashboard-progress .progress-card strong {
   font-size: 42px;
 }
@@ -989,6 +993,10 @@ textarea {
 
 .dashboard-progress .progress-card:nth-child(3):after {
   content: "🏆";
+}
+
+.dashboard-progress .progress-card:nth-child(4):after {
+  content: "🎯";
 }
 
 .dashboard-progress .progress-card:after {

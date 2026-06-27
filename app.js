@@ -29,6 +29,8 @@ const MIGRATION_KEY = "fitness_done_migrated_to_firebase_v1";
 const COLLECTION_NAME = "exercises";
 const USERS_COLLECTION = "participants";
 const CHALLENGE_META_TYPE = "challenge-meta";
+const DELAY_PENALTY = 10;
+const DAY_MS = 24 * 60 * 60 * 1000;
 let currentWeek = 1;
 let currentWeeksByChallenge = {};
 let activeChallenge = null;
@@ -235,15 +237,15 @@ function getParticipantWeekScope(data) {
 
 function calcUserStats(data, done) {
   const workouts = workoutOnly(data);
-  const completed = workouts.filter(x => done[x.id]);
+  const completed = workouts.filter(x => isDone(done[x.id]));
   const weekScope = getParticipantWeekScope(data);
 
   return {
-    percent: calcPercent(workouts, done),
+    percent: calcCompletionPercent(workouts, done),
     completed: completed.length,
     total: workouts.length,
     minutes: completed.reduce((sum, x) => sum + (Number(x.duration) || 0), 0),
-    weekPercent: calcPercent(weekScope.weekData, done),
+    weekPercent: calcCompletionPercent(weekScope.weekData, done),
     weekLabel: weekScope.weekLabel,
     completedWeeks: getCompletedWeeks(data, done).length
   };
@@ -433,11 +435,68 @@ function groupByKey(items, keyFn) {
   }, {});
 }
 
-function calcPercent(items, done) {
+function isDone(record) {
+  return record === true || !!(record && record.completed === true);
+}
+
+function getCompletedAt(record) {
+  if (!record || record === true) return null;
+  const date = new Date(record.completedAt || "");
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function getProgramAbsoluteDay(item) {
+  const week = itemWeek(item);
+  const programDay = itemProgramDay(item);
+  if (!Number.isFinite(week) || !Number.isFinite(programDay)) return 0;
+  return ((week - 1) * 7) + programDay;
+}
+
+function startOfDay(date) {
+  const d = new Date(date);
+  d.setHours(0, 0, 0, 0);
+  return d;
+}
+
+function getExpectedDate(item) {
+  const absoluteDay = getProgramAbsoluteDay(item);
+  if (absoluteDay <= 0) return null;
+
+  const start = startOfDay(challengeStartDate(challengeNumber(item)));
+  start.setDate(start.getDate() + absoluteDay - 1);
+  return start;
+}
+
+function calcCompletionPercent(items, done) {
   const workouts = workoutOnly(items);
   if (workouts.length === 0) return 0;
-  const complete = workouts.filter(x => done[x.id]).length;
+  const complete = workouts.filter(x => isDone(done[x.id])).length;
   return Math.round((complete / workouts.length) * 100);
+}
+
+function calcCommitmentPercent(items, done) {
+  const completedItems = workoutOnly(items).filter(item => isDone(done[item.id]));
+  if (completedItems.length === 0) return 100;
+
+  const scores = completedItems.map(item => {
+    const absoluteDay = getProgramAbsoluteDay(item);
+    if (challengeNumber(item) === 1 && absoluteDay <= 3) return 100;
+
+    const completedAt = getCompletedAt(done[item.id]);
+    if (!completedAt) return 100;
+
+    const expectedDate = getExpectedDate(item);
+    if (!expectedDate) return 100;
+
+    const delayDays = Math.max(0, Math.floor((startOfDay(completedAt) - startOfDay(expectedDate)) / DAY_MS));
+    return Math.max(0, 100 - (delayDays * DELAY_PENALTY));
+  });
+
+  return Math.round(scores.reduce((sum, score) => sum + score, 0) / scores.length);
+}
+
+function calcPercent(items, done) {
+  return calcCompletionPercent(items, done);
 }
 
 function setProgress(idPercent, idBar, percent) {
@@ -509,11 +568,13 @@ function showPop(message, type = "success") {
   }, 2600);
 }
 
-function challengeStartDate() {
-  let start = localStorage.getItem("challenge_start_date");
+function challengeStartDate(challenge = 1) {
+  const number = Number(challenge) || 1;
+  const key = number === 1 ? "challenge_start_date" : `challenge_start_date_${number}`;
+  let start = localStorage.getItem(key);
   if (!start) {
     start = new Date().toISOString();
-    localStorage.setItem("challenge_start_date", start);
+    localStorage.setItem(key, start);
   }
   return new Date(start);
 }
@@ -528,7 +589,7 @@ function updateCountdown(data = cachedData) {
   const totalDays = dayKeys.length || CHALLENGE_DAYS;
 
   const completedDays = dayKeys.filter(key =>
-    dayGroups[key].length > 0 && dayGroups[key].every(x => done[x.id])
+    dayGroups[key].length > 0 && dayGroups[key].every(x => isDone(done[x.id]))
   ).length;
 
   const daysLeft = Math.max(0, totalDays - completedDays);
@@ -539,7 +600,7 @@ function updateCountdown(data = cachedData) {
 function getCompletedWeeks(data, done) {
   const weekGroups = groupByKey(data, weekKey);
   return Object.keys(weekGroups)
-    .filter(key => weekGroups[key].length > 0 && weekGroups[key].every(x => done[x.id]))
+    .filter(key => weekGroups[key].length > 0 && weekGroups[key].every(x => isDone(done[x.id])))
     .map(key => {
       const [challenge, week] = key.split("-").map(Number);
       return { key, challenge, week };
@@ -550,7 +611,7 @@ function getCompletedWeeks(data, done) {
 function updateStats(data) {
   const done = getDone();
   const workouts = workoutOnly(data);
-  const completed = workouts.filter(x => done[x.id]);
+  const completed = workouts.filter(x => isDone(done[x.id]));
   const minutes = completed.reduce((sum, x) => sum + (Number(x.duration) || 0), 0);
   const completedWeeks = getCompletedWeeks(data, done);
 
@@ -577,11 +638,13 @@ function updateProgressBoard(data) {
   const weekItems = workouts.filter(x => itemWeek(x) === Number(currentWeek));
   const monthItems = workouts.filter(x => itemWeek(x) >= 1 && itemWeek(x) <= 4);
   const challengeItems = workouts;
-  const challengePercent = calcPercent(challengeItems, done);
+  const challengePercent = calcCompletionPercent(challengeItems, done);
+  const commitmentPercent = calcCommitmentPercent(challengeItems, done);
 
-  setProgress("weekPercent", "weekBar", calcPercent(weekItems, done));
-  setProgress("monthPercent", "monthBar", calcPercent(monthItems, done));
+  setProgress("weekPercent", "weekBar", calcCompletionPercent(weekItems, done));
+  setProgress("monthPercent", "monthBar", calcCompletionPercent(monthItems, done));
   setProgress("challengePercent", "challengeBar", challengePercent);
+  setProgress("commitmentPercent", "commitmentBar", commitmentPercent);
 
   const trophy = document.getElementById("trophyBox");
   if (trophy) {
@@ -600,9 +663,16 @@ async function toggleDone(id) {
   const scrollY = window.scrollY;
 
   const done = getDone();
-  const wasDone = !!done[id];
+  const wasDone = isDone(done[id]);
 
-  done[id] = !done[id];
+  if (wasDone) {
+    delete done[id];
+  } else {
+    done[id] = {
+      completed: true,
+      completedAt: new Date().toISOString()
+    };
+  }
   await saveDone(done);
 
   if (!wasDone) {
@@ -752,8 +822,8 @@ async function renderViewer(options = {}) {
                 ? `
                             <div class="rest">
                               <div>يوم راحة 🌸</div>
-                              <button class="done-btn ${done[restItem.id] ? "is-done" : ""}" onclick="toggleDone('${restItem.id}')">
-                                ${done[restItem.id] ? "تم الإنجاز ✓" : "تم إنجاز يوم الراحة"}
+                              <button class="done-btn ${isDone(done[restItem.id]) ? "is-done" : ""}" onclick="toggleDone('${restItem.id}')">
+                                ${isDone(done[restItem.id]) ? "تم الإنجاز ✓" : "تم إنجاز يوم الراحة"}
                               </button>
                             </div>
                           `
@@ -765,19 +835,19 @@ async function renderViewer(options = {}) {
                 item.type === "rest"
                   ? ""
                   : `
-                                <div class="exercise ${done[item.id] ? "completed" : ""}">
+                                <div class="exercise ${isDone(done[item.id]) ? "completed" : ""}">
                                   <a href="${item.youtube || "#"}" target="_blank" rel="noopener">
                                     <div class="image-wrap">
                                       <img src="${getYoutubeThumb(item.youtube)}" alt="${escapeHtml(item.title)}">
-                                      ${done[item.id] ? `<span class="done-ribbon">مكتمل ✓</span>` : ""}
+                                      ${isDone(done[item.id]) ? `<span class="done-ribbon">مكتمل ✓</span>` : ""}
                                     </div>
                                   </a>
                                   <div class="body">
                                     <span class="badge">${item.duration ? item.duration + " دقيقة" : "بدون مدة"}</span>
                                     <h3>${escapeHtml(item.title)}</h3>
                                     ${item.notes ? `<div class="notes">${escapeHtml(item.notes)}</div>` : ""}
-                                    <button class="done-btn ${done[item.id] ? "is-done" : ""}" onclick="toggleDone('${item.id}')">
-                                      ${done[item.id] ? "تم الإنجاز ✓" : "تم إنجاز التمرين"}
+                                    <button class="done-btn ${isDone(done[item.id]) ? "is-done" : ""}" onclick="toggleDone('${item.id}')">
+                                      ${isDone(done[item.id]) ? "تم الإنجاز ✓" : "تم إنجاز التمرين"}
                                     </button>
                                   </div>
                                 </div>
