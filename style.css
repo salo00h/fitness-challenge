@@ -406,6 +406,12 @@ textarea {
   gap: 15px
 }
 
+.grid3 {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 15px
+}
+
 .actions {
   display: flex;
   flex-wrap: wrap;
@@ -506,6 +512,10 @@ textarea {
   font-weight: bold;
 }
 
+.image-tune-grid {
+  margin-top: 14px;
+}
+
 .challenge-meta-list {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
@@ -522,6 +532,7 @@ textarea {
   border-radius: 18px;
   padding: 10px;
   background: white;
+  overflow: hidden;
 }
 
 .challenge-meta-card img {
@@ -580,6 +591,10 @@ textarea {
   }
 
   .grid2 {
+    grid-template-columns: 1fr
+  }
+
+  .grid3 {
     grid-template-columns: 1fr
   }
 
@@ -1263,10 +1278,6 @@ textarea {
 
 .challenge-box.is-closed .challenge-description {
   font-size: 16px;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
 }
 
 .challenge-enter-btn {

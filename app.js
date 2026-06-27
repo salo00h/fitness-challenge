@@ -81,6 +81,9 @@ async function saveChallengeMeta(challenge, data) {
     type: CHALLENGE_META_TYPE,
     challenge: number,
     image: String(data.image || "").trim(),
+    imageX: clampImageNumber(data.imageX, 0, 100, 50),
+    imageY: clampImageNumber(data.imageY, 0, 100, 50),
+    imageZoom: clampImageNumber(data.imageZoom, 100, 170, 100),
     description: String(data.description || "").trim(),
     updatedAt: new Date().toISOString()
   };
@@ -643,6 +646,7 @@ async function renderViewer(options = {}) {
     const meta = getChallengeMeta(challenge);
     const metaDescription = meta.description || "وصف التحدي يظهر هنا من صفحة الإعدادات";
     const metaImage = meta.image || challengePlaceholder(challenge);
+    const metaImageStyle = getChallengeImageStyle(meta);
 
     const grouped = {};
     if (isOpen) {
@@ -655,7 +659,7 @@ async function renderViewer(options = {}) {
     return `
       <section class="challenge-box card ${isOpen ? "is-open" : "is-closed"}" data-challenge="${challenge}">
         <div class="challenge-cover">
-          <img src="${escapeHtml(metaImage)}" alt="${challengeName(challenge)}">
+          <img src="${escapeHtml(metaImage)}" alt="${challengeName(challenge)}" style="${metaImageStyle}">
           <span>${challengeName(challenge)}</span>
         </div>
 
@@ -769,6 +773,61 @@ async function changeChallengeWeek(challenge, step) {
   });
 }
 
+function clampImageNumber(value, min, max, fallback) {
+  const number = Number(value);
+  if (!Number.isFinite(number)) return fallback;
+  return Math.min(max, Math.max(min, number));
+}
+
+function getChallengeImageStyle(meta = {}) {
+  const x = clampImageNumber(meta.imageX, 0, 100, 50);
+  const y = clampImageNumber(meta.imageY, 0, 100, 50);
+  const zoom = clampImageNumber(meta.imageZoom, 100, 170, 100) / 100;
+  return `object-position:${x}% ${y}%;transform-origin:${x}% ${y}%;transform:scale(${zoom});`;
+}
+
+function readFileAsDataUrl(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+function loadImage(src) {
+  return new Promise((resolve, reject) => {
+    const image = new Image();
+    image.onload = () => resolve(image);
+    image.onerror = reject;
+    image.src = src;
+  });
+}
+
+async function compressImageFile(file) {
+  const source = await readFileAsDataUrl(file);
+  const image = await loadImage(source);
+  const maxSide = 1200;
+  const scale = Math.min(1, maxSide / Math.max(image.width, image.height));
+  const width = Math.max(1, Math.round(image.width * scale));
+  const height = Math.max(1, Math.round(image.height * scale));
+
+  const canvas = document.createElement("canvas");
+  canvas.width = width;
+  canvas.height = height;
+  const ctx = canvas.getContext("2d");
+  ctx.drawImage(image, 0, 0, width, height);
+
+  let quality = 0.86;
+  let result = canvas.toDataURL("image/jpeg", quality);
+  while (result.length > 850000 && quality > 0.56) {
+    quality -= 0.08;
+    result = canvas.toDataURL("image/jpeg", quality);
+  }
+
+  return result;
+}
+
 function getAdminChallengeNumbers() {
   const numbers = new Set([1, 2, 3, 4, 5]);
   cachedData.forEach(item => numbers.add(challengeNumber(item)));
@@ -791,13 +850,21 @@ function populateChallengeMetaOptions() {
 function updateChallengeImagePreview() {
   const select = document.getElementById("metaChallenge");
   const input = document.getElementById("challengeImage");
+  const xInput = document.getElementById("challengeImageX");
+  const yInput = document.getElementById("challengeImageY");
+  const zoomInput = document.getElementById("challengeImageZoom");
   const preview = document.getElementById("challengeImagePreview");
   if (!select || !input || !preview) return;
 
   const challenge = Number(select.value) || 1;
   const image = input.value.trim() || challengePlaceholder(challenge);
+  const imageStyle = getChallengeImageStyle({
+    imageX: xInput?.value,
+    imageY: yInput?.value,
+    imageZoom: zoomInput?.value
+  });
   preview.innerHTML = `
-    <img src="${escapeHtml(image)}" alt="${challengeName(challenge)}">
+    <img src="${escapeHtml(image)}" alt="${challengeName(challenge)}" style="${imageStyle}">
     <span>${challengeName(challenge)}</span>
   `;
 }
@@ -805,6 +872,10 @@ function updateChallengeImagePreview() {
 function fillChallengeMetaForm(challenge) {
   const select = document.getElementById("metaChallenge");
   const imageInput = document.getElementById("challengeImage");
+  const fileInput = document.getElementById("challengeImageFile");
+  const xInput = document.getElementById("challengeImageX");
+  const yInput = document.getElementById("challengeImageY");
+  const zoomInput = document.getElementById("challengeImageZoom");
   const descriptionInput = document.getElementById("challengeDescription");
   if (!select || !imageInput || !descriptionInput) return;
 
@@ -812,6 +883,10 @@ function fillChallengeMetaForm(challenge) {
   const meta = getChallengeMeta(number);
   select.value = String(number);
   imageInput.value = meta.image || "";
+  if (fileInput) fileInput.value = "";
+  if (xInput) xInput.value = clampImageNumber(meta.imageX, 0, 100, 50);
+  if (yInput) yInput.value = clampImageNumber(meta.imageY, 0, 100, 50);
+  if (zoomInput) zoomInput.value = clampImageNumber(meta.imageZoom, 100, 170, 100);
   descriptionInput.value = meta.description || "";
   updateChallengeImagePreview();
 }
@@ -826,10 +901,11 @@ function renderChallengeMetaList() {
     const meta = getChallengeMeta(challenge);
     const image = meta.image || challengePlaceholder(challenge);
     const description = meta.description || "لم يتم إضافة وصف بعد";
+    const imageStyle = getChallengeImageStyle(meta);
 
     return `
       <article class="challenge-meta-card">
-        <img src="${escapeHtml(image)}" alt="${challengeName(challenge)}">
+        <img src="${escapeHtml(image)}" alt="${challengeName(challenge)}" style="${imageStyle}">
         <div>
           <strong>${challengeName(challenge)}</strong>
           <p>${escapeHtml(description)}</p>
@@ -854,10 +930,35 @@ function initChallengeMetaAdmin() {
 
   const select = document.getElementById("metaChallenge");
   const imageInput = document.getElementById("challengeImage");
+  const fileInput = document.getElementById("challengeImageFile");
+  const xInput = document.getElementById("challengeImageX");
+  const yInput = document.getElementById("challengeImageY");
+  const zoomInput = document.getElementById("challengeImageZoom");
   const clearBtn = document.getElementById("clearChallengeMeta");
 
   select.addEventListener("change", () => fillChallengeMetaForm(select.value));
   imageInput.addEventListener("input", updateChallengeImagePreview);
+  [xInput, yInput, zoomInput].forEach(input => {
+    if (input) input.addEventListener("input", updateChallengeImagePreview);
+  });
+
+  fileInput.addEventListener("change", async () => {
+    const file = fileInput.files && fileInput.files[0];
+    if (!file) return;
+
+    const oldPlaceholder = imageInput.placeholder;
+    imageInput.placeholder = "جاري تجهيز الصورة...";
+    try {
+      imageInput.value = await compressImageFile(file);
+      updateChallengeImagePreview();
+    } catch (e) {
+      imageInput.value = "";
+      alert("تعذر رفع الصورة. جرّبي صورة أخرى.");
+      updateChallengeImagePreview();
+    } finally {
+      imageInput.placeholder = oldPlaceholder;
+    }
+  });
 
   form.addEventListener("submit", async e => {
     e.preventDefault();
@@ -865,6 +966,9 @@ function initChallengeMetaAdmin() {
     const challenge = Number(select.value) || 1;
     await saveChallengeMeta(challenge, {
       image: imageInput.value,
+      imageX: xInput?.value,
+      imageY: yInput?.value,
+      imageZoom: zoomInput?.value,
       description: document.getElementById("challengeDescription").value
     });
 

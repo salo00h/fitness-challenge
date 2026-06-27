@@ -41,11 +41,33 @@
 
           <div>
             <label>رابط صورة التحدي</label>
-            <input id="challengeImage" type="url" placeholder="https://example.com/challenge.jpg" />
+            <input id="challengeImage" type="text" placeholder="https://example.com/challenge.jpg" />
+          </div>
+
+          <div>
+            <label>رفع صورة من الجهاز</label>
+            <input id="challengeImageFile" type="file" accept="image/*" />
           </div>
         </div>
 
         <div id="challengeImagePreview" class="challenge-image-preview"></div>
+
+        <div class="grid3 image-tune-grid">
+          <div>
+            <label>تحريك أفقي %</label>
+            <input id="challengeImageX" type="number" min="0" max="100" value="50" />
+          </div>
+
+          <div>
+            <label>تحريك عمودي %</label>
+            <input id="challengeImageY" type="number" min="0" max="100" value="50" />
+          </div>
+
+          <div>
+            <label>تكبير الصورة %</label>
+            <input id="challengeImageZoom" type="number" min="100" max="170" value="100" />
+          </div>
+        </div>
 
         <label>وصف صغير تحت اسم التحدي</label>
         <textarea id="challengeDescription" placeholder="مثال: تحدي تقوية الجسم خلال 4 أسابيع"></textarea>
