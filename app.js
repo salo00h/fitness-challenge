@@ -34,6 +34,7 @@ const ADMIN_PASSWORD = "1234";
 const ADMIN_SESSION_KEY = "fitness_admin_unlocked_v1";
 const THEME_KEY = "fitness_theme_v1";
 const DEFAULT_CHALLENGE_START_DATE = "2025-06-20";
+const COMMITMENT_START_WEEK = 2;
 const DELAY_PENALTY = 10;
 const DAY_MS = 24 * 60 * 60 * 1000;
 const AVATARS = ["🌸", "🔥", "💪", "🏆", "⭐", "🌷", "💖", "🦋", "👑", "✨"];
@@ -1110,8 +1111,7 @@ function getCommitmentScore(item, done) {
   const record = done[item.id];
   if (!isDone(record)) return null;
 
-  const absoluteDay = getProgramAbsoluteDay(item);
-  if (challengeNumber(item) === 1 && absoluteDay <= 3) return 100;
+  if (itemWeek(item) < COMMITMENT_START_WEEK) return 100;
 
   const completedAt = getCompletedAt(record);
   if (!completedAt) return 100;
