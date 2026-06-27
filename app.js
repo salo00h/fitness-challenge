@@ -29,15 +29,13 @@ const MIGRATION_KEY = "fitness_done_migrated_to_firebase_v1";
 const COLLECTION_NAME = "exercises";
 const USERS_COLLECTION = "participants";
 let currentWeek = 1;
+let currentWeeksByChallenge = {};
 let cachedData = [];
 let currentUser = null;
 let currentDone = {};
 
 // عدل هنا عدد أيام التحدي
 const CHALLENGE_DAYS = 30;
-const SPECIAL_START_DAY = 4;
-const DELAY_PENALTY = 10;
-const COMMITMENT_START_DATE = "2026-06-24";
 
 async function getData() {
   const snap = await getDocs(collection(db, COLLECTION_NAME));
@@ -171,7 +169,7 @@ function renderUserBar() {
 
 function calcUserStats(data, done) {
   const workouts = workoutOnly(data);
-  const completed = workouts.filter(x => isDone(done[x.id]));
+  const completed = workouts.filter(x => done[x.id]);
   return {
     percent: calcPercent(workouts, done),
     completed: completed.length,
@@ -212,10 +210,10 @@ async function renderParticipantsBoard(data) {
     <h2>👭 تحدي البنات</h2>
     <div class="participants-grid">
       ${users.map(user => {
-    const stats = calcUserStats(data, user.done || {});
-    const isMe = normalizeUserName(user.name) === currentUser;
+        const stats = calcUserStats(data, user.done || {});
+        const isMe = normalizeUserName(user.name) === currentUser;
 
-    return `
+        return `
           <article class="participant-card ${isMe ? "is-me" : ""}">
             <div class="participant-head">
               <strong>${escapeHtml(user.name)}</strong>
@@ -236,12 +234,31 @@ async function renderParticipantsBoard(data) {
             </div>
           </article>
         `;
-  }).join("")}
+      }).join("")}
     </div>
   `;
 }
 
 function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2); }
+
+function challengeNumber(item) {
+  return Number(item.challenge || 1);
+}
+
+function challengeName(n) {
+  return `التحدي ${toArabicOrdinal(n)}`;
+}
+
+function getChallengeWeek(challenge) {
+  const key = String(challenge);
+  if (!currentWeeksByChallenge[key]) currentWeeksByChallenge[key] = 1;
+  return currentWeeksByChallenge[key];
+}
+
+function setChallengeWeek(challenge, week) {
+  currentWeeksByChallenge[String(challenge)] = Math.max(1, Number(week) || 1);
+}
+
 
 function weekName(n) { return `الأسبوع ${toArabicOrdinal(n)}`; }
 function dayName(n) { return `اليوم ${toArabicOrdinal(n)}`; }
@@ -280,15 +297,10 @@ function workoutOnly(data) {
   return data;
 }
 
-function isDone(value) {
-  return value === true ||
-    (value && value.completed);
-}
-
 function calcPercent(items, done) {
   const workouts = workoutOnly(items);
   if (workouts.length === 0) return 0;
-  const complete = workouts.filter(x => isDone(done[x.id])).length;
+  const complete = workouts.filter(x => done[x.id]).length;
   return Math.round((complete / workouts.length) * 100);
 }
 
@@ -340,75 +352,6 @@ function confetti() {
   }
 }
 
-function getProgramAbsoluteDay(item) {
-  return ((Number(item.week) - 1) * 7) + Number(item.programDay);
-}
-
-function getExpectedDate(item) {
-  const d = new Date(COMMITMENT_START_DATE);
-
-  const absoluteDay = getProgramAbsoluteDay(item);
-
-  if (absoluteDay <= SPECIAL_START_DAY) {
-    return new Date(COMMITMENT_START_DATE);
-  }
-
-  d.setDate(
-    d.getDate() +
-    (absoluteDay - SPECIAL_START_DAY)
-  );
-
-  return d;
-}
-
-function calcCommitmentPercent(data, done) {
-
-  const completedRecords = Object.values(done)
-    .filter(x => x && x.completedAt);
-
-  if (completedRecords.length === 0) {
-    return 100;
-  }
-
-  let score = 0;
-
-  for (const item of data) {
-
-    const record = done[item.id];
-
-    if (!record || !record.completedAt) {
-      continue;
-    }
-
-    const absoluteDay = getProgramAbsoluteDay(item);
-
-    if (absoluteDay <= 3) {
-      score += 100;
-      continue;
-    }
-
-    const completedAt = new Date(record.completedAt);
-    const expectedDate = getExpectedDate(item);
-
-    const delayDays = Math.max(
-      0,
-      Math.floor(
-        (completedAt - expectedDate) /
-        (1000 * 60 * 60 * 24)
-      )
-    );
-
-    score += Math.max(
-      0,
-      100 - delayDays * DELAY_PENALTY
-    );
-  }
-
-  return Math.round(
-    score / completedRecords.length
-  );
-}
-
 function challengeStartDate() {
   let start = localStorage.getItem("challenge_start_date");
   if (!start) {
@@ -442,7 +385,7 @@ function updateCountdown() {
       Number(x.programDay) === day
     );
 
-    return dayItems.length > 0 && dayItems.every(x => isDone(done[x.id]));
+    return dayItems.length > 0 && dayItems.every(x => done[x.id]);
   }).length;
 
   const daysLeft = Math.max(0, totalDays - completedDays);
@@ -454,18 +397,16 @@ function getCompletedWeeks(data, done) {
   const weeks = [...new Set(data.map(x => Number(x.week)))].sort((a, b) => a - b);
   return weeks.filter(week => {
     const weekItems = workoutOnly(data.filter(x => Number(x.week) === week));
-    return weekItems.length > 0 && weekItems.every(x => isDone(done[x.id]));
+    return weekItems.length > 0 && weekItems.every(x => done[x.id]);
   });
 }
 
 function updateStats(data) {
   const done = getDone();
   const workouts = workoutOnly(data);
-  const completed = workouts.filter(x => isDone(done[x.id]));
+  const completed = workouts.filter(x => done[x.id]);
   const minutes = completed.reduce((sum, x) => sum + (Number(x.duration) || 0), 0);
   const completedWeeks = getCompletedWeeks(data, done);
-  const commitmentPercent =
-    calcCommitmentPercent(data, done);
 
   const doneCount = document.getElementById("doneCount");
   const doneMinutes = document.getElementById("doneMinutes");
@@ -474,13 +415,6 @@ function updateStats(data) {
   if (doneCount) doneCount.textContent = completed.length;
   if (doneMinutes) doneMinutes.textContent = minutes;
   if (doneWeeks) doneWeeks.textContent = completedWeeks.length;
-  const doneWeeksBox =
-    document.getElementById("commitmentPercent");
-
-  if (doneWeeksBox) {
-    doneWeeksBox.textContent =
-      commitmentPercent + "%";
-  }
 
   const weekStars = document.getElementById("weekStars");
   if (weekStars) {
@@ -519,16 +453,9 @@ async function toggleDone(id) {
   const scrollY = window.scrollY;
 
   const done = getDone();
-  const wasDone = isDone(done[id]);
+  const wasDone = !!done[id];
 
-  if (done[id]) {
-    delete done[id];
-  } else {
-    done[id] = {
-      completed: true,
-      completedAt: new Date().toISOString()
-    };
-  }
+  done[id] = !done[id];
   await saveDone(done);
 
   if (!wasDone) {
@@ -565,177 +492,144 @@ async function toggleDone(id) {
 
 async function renderViewer() {
   const daysBox = document.getElementById("days");
-  const weekTitle = document.getElementById("weekTitle");
-  if (!daysBox || !weekTitle) return;
+  if (!daysBox) return;
 
   const done = getDone();
-  weekTitle.textContent = weekName(currentWeek);
-
-  document.getElementById("prevWeek").onclick = async () => {
-    if (currentWeek > 1) currentWeek--;
-    await renderViewer();
-  };
-
-  document.getElementById("nextWeek").onclick = async () => {
-    currentWeek++;
-    await renderViewer();
-  };
-
   daysBox.innerHTML = `<div class="empty card">جاري تحميل التمارين...</div>`;
 
   const allData = await getData();
   updateProgressBoard(allData);
 
-  const data = allData
-    .filter(x => Number(x.week) === Number(currentWeek))
-    .sort((a, b) => Number(a.programDay) - Number(b.programDay));
-
-  if (data.length === 0) {
+  if (allData.length === 0) {
     daysBox.innerHTML = `
       <div class="empty card">
-        لا توجد تمارين في ${weekName(currentWeek)}.
-        أضفها من صفحة الإعدادات.
+        لا توجد تمارين حتى الآن. أضفها من صفحة الإعدادات.
       </div>
     `;
     return;
   }
 
-  const grouped = {};
+  const challenges = [...new Set(allData.map(challengeNumber))].sort((a, b) => a - b);
 
-  data.forEach(item => {
-    if (!grouped[item.programDay]) {
-      grouped[item.programDay] = [];
-    }
-    grouped[item.programDay].push(item);
-  });
+  daysBox.innerHTML = challenges.map(challenge => {
+    const challengeData = allData.filter(x => challengeNumber(x) === challenge);
+    const selectedWeek = getChallengeWeek(challenge);
+    const weeks = [...new Set(challengeData.map(x => Number(x.week)))].sort((a, b) => a - b);
+    const weekData = challengeData
+      .filter(x => Number(x.week) === Number(selectedWeek))
+      .sort((a, b) => Number(a.programDay) - Number(b.programDay));
 
-  daysBox.innerHTML = Object.keys(grouped)
-    .sort((a, b) => a - b)
-    .map(day => {
+    const challengePercent = calcPercent(challengeData, done);
+    const weekPercent = calcPercent(weekData, done);
+    const maxWeek = weeks.length ? Math.max(...weeks) : selectedWeek;
 
-      const items = grouped[day];
-      const allRest = items.every(i => i.type === "rest");
-      const dayPercent = calcPercent(items, done);
-      const restItem = items[0];
+    const grouped = {};
+    weekData.forEach(item => {
+      if (!grouped[item.programDay]) grouped[item.programDay] = [];
+      grouped[item.programDay].push(item);
+    });
 
-      return `
-        <article class="day-card">
-
-          <div class="day-head">
-            <div>
-
-              <h2>${dayName(day)}</h2>
-
-              <span class="day-progress">
-                إنجاز اليوم: ${dayPercent}%
-              </span>
-
-              <div class="day-progress-bar">
-                <div
-                  class="day-progress-fill"
-                  style="width:${dayPercent}%">
-                </div>
-              </div>
-
-            </div>
-
-            <span class="week-label">
-              ${weekName(currentWeek)}
-            </span>
+    return `
+      <section class="challenge-box card">
+        <div class="challenge-head">
+          <div>
+            <span class="challenge-kicker">🔥 برنامج مستقل</span>
+            <h2>${challengeName(challenge)}</h2>
+            <p>الأسابيع والأيام الخاصة بهذا التحدي فقط</p>
           </div>
 
-          ${allRest
-          ? `
-              <div class="rest">
-                <div>يوم راحة 🌸</div>
+          <div class="challenge-progress">
+            <strong>${challengePercent}%</strong>
+            <span>إنجاز التحدي</span>
+            <div class="bar"><div style="width:${challengePercent}%"></div></div>
+          </div>
+        </div>
 
-                <button
-                  class="done-btn ${done[restItem.id] ? "is-done" : ""}"
-                  onclick="toggleDone('${restItem.id}')">
+        <div class="week-nav challenge-week-nav">
+          <button type="button" onclick="changeChallengeWeek(${challenge}, -1)">الأسبوع السابق</button>
+          <strong>${weekName(selectedWeek)} <small>(${weekPercent}%)</small></strong>
+          <button type="button" onclick="changeChallengeWeek(${challenge}, 1)">الأسبوع التالي</button>
+        </div>
 
-                  ${done[restItem.id]
-            ? "تم الإنجاز ✓"
-            : "تم إنجاز يوم الراحة"}
+        ${weekData.length === 0
+          ? `<div class="empty card">لا توجد تمارين في ${weekName(selectedWeek)} داخل ${challengeName(challenge)}.</div>`
+          : `<div class="challenge-days">
+              ${Object.keys(grouped).sort((a, b) => a - b).map(day => {
+                const items = grouped[day];
+                const allRest = items.every(i => i.type === "rest");
+                const dayPercent = calcPercent(items, done);
+                const restItem = items[0];
 
-                </button>
-              </div>
-            `
-          : ""
-        }
-
-          <div class="exercises">
-
-            ${items.map(item =>
-
-          item.type === "rest"
-            ? ""
-
-            : `
-
-                <div class="exercise ${isDone(done[item.id]) ? "completed" : ""}">
-
-                  <a
-                    href="${item.youtube || "#"}"
-                    target="_blank"
-                    rel="noopener">
-
-                    <div class="image-wrap">
-
-                      <img
-                        src="${getYoutubeThumb(item.youtube)}"
-                        alt="${escapeHtml(item.title)}">
-
-                      ${isDone(done[item.id])
-              ? `<span class="done-ribbon">مكتمل ✓</span>`
-              : ""
-            }
-
+                return `
+                  <article class="day-card">
+                    <div class="day-head">
+                      <div>
+                        <h2>${dayName(day)}</h2>
+                        <span class="day-progress">إنجاز اليوم: ${dayPercent}%</span>
+                        <div class="day-progress-bar">
+                          <div class="day-progress-fill" style="width:${dayPercent}%"></div>
+                        </div>
+                      </div>
+                      <span class="week-label">${weekName(selectedWeek)}</span>
                     </div>
 
-                  </a>
+                    ${allRest
+                      ? `
+                        <div class="rest">
+                          <div>يوم راحة 🌸</div>
+                          <button class="done-btn ${done[restItem.id] ? "is-done" : ""}" onclick="toggleDone('${restItem.id}')">
+                            ${done[restItem.id] ? "تم الإنجاز ✓" : "تم إنجاز يوم الراحة"}
+                          </button>
+                        </div>
+                      `
+                      : ""
+                    }
 
-                  <div class="body">
-
-                    <span class="badge">
-                      ${item.duration
-              ? item.duration + " دقيقة"
-              : "بدون مدة"}
-                    </span>
-
-                    <h3>${escapeHtml(item.title)}</h3>
-
-                    ${item.notes
-              ? `<div class="notes">${escapeHtml(item.notes)}</div>`
-              : ""
-            }
-
-                    <button
-                      class="done-btn ${isDone(done[item.id]) ? "is-done" : ""}"
-                      onclick="toggleDone('${item.id}')">
-
-                      ${isDone(done[item.id])
-              ? "تم الإنجاز ✓"
-              : "تم إنجاز التمرين"}
-
-                    </button>
-
-                  </div>
-
-                </div>
-
-              `
-
-        ).join("")}
-
-          </div>
-
-        </article>
-      `;
-    })
-    .join("");
+                    <div class="exercises">
+                      ${items.map(item =>
+                        item.type === "rest"
+                          ? ""
+                          : `
+                            <div class="exercise ${done[item.id] ? "completed" : ""}">
+                              <a href="${item.youtube || "#"}" target="_blank" rel="noopener">
+                                <div class="image-wrap">
+                                  <img src="${getYoutubeThumb(item.youtube)}" alt="${escapeHtml(item.title)}">
+                                  ${done[item.id] ? `<span class="done-ribbon">مكتمل ✓</span>` : ""}
+                                </div>
+                              </a>
+                              <div class="body">
+                                <span class="badge">${item.duration ? item.duration + " دقيقة" : "بدون مدة"}</span>
+                                <h3>${escapeHtml(item.title)}</h3>
+                                ${item.notes ? `<div class="notes">${escapeHtml(item.notes)}</div>` : ""}
+                                <button class="done-btn ${done[item.id] ? "is-done" : ""}" onclick="toggleDone('${item.id}')">
+                                  ${done[item.id] ? "تم الإنجاز ✓" : "تم إنجاز التمرين"}
+                                </button>
+                              </div>
+                            </div>
+                          `
+                      ).join("")}
+                    </div>
+                  </article>
+                `;
+              }).join("")}
+            </div>`
+        }
+      </section>
+    `;
+  }).join("");
 
   updateProgressBoard(allData);
   await renderParticipantsBoard(allData);
+}
+
+async function changeChallengeWeek(challenge, step) {
+  const allData = cachedData.length ? cachedData : await getData();
+  const challengeData = allData.filter(x => challengeNumber(x) === Number(challenge));
+  const weeks = [...new Set(challengeData.map(x => Number(x.week)))].sort((a, b) => a - b);
+  const maxWeek = weeks.length ? Math.max(...weeks) : 1;
+  const nextWeek = Math.min(maxWeek, Math.max(1, getChallengeWeek(challenge) + Number(step)));
+  setChallengeWeek(challenge, nextWeek);
+  await renderViewer();
 }
 
 async function initAdmin() {
@@ -762,6 +656,7 @@ async function initAdmin() {
     const item = {
       id: editId || uid(),
       title: document.getElementById("title").value.trim(),
+      challenge: document.getElementById("challenge").value,
       week: document.getElementById("week").value,
       programDay: document.getElementById("programDay").value,
       duration: document.getElementById("duration").value.trim(),
@@ -808,7 +703,9 @@ async function renderAdminList() {
   list.innerHTML = `<div class="empty card">جاري تحميل التمارين...</div>`;
 
   const data = (await getData()).sort((a, b) =>
-    Number(a.week) - Number(b.week) || Number(a.programDay) - Number(b.programDay)
+    challengeNumber(a) - challengeNumber(b) ||
+    Number(a.week) - Number(b.week) ||
+    Number(a.programDay) - Number(b.programDay)
   );
 
   if (data.length === 0) {
@@ -821,7 +718,7 @@ async function renderAdminList() {
       <img src="${getYoutubeThumb(item.youtube)}" alt="">
       <div class="admin-info">
         <h3>${escapeHtml(item.title)}</h3>
-        <div class="small">${weekName(item.week)} - ${dayName(item.programDay)} - ${item.duration ? item.duration + " دقيقة" : "بدون مدة"}</div>
+        <div class="small">${challengeName(challengeNumber(item))} - ${weekName(item.week)} - ${dayName(item.programDay)} - ${item.duration ? item.duration + " دقيقة" : "بدون مدة"}</div>
         <div class="small">${item.type === "rest" ? "راحة" : "تمرين"} ${item.youtube ? " - يوجد رابط يوتيوب" : ""}</div>
       </div>
       <div class="actions">
@@ -838,6 +735,7 @@ function editItem(id) {
 
   document.getElementById("editId").value = item.id;
   document.getElementById("title").value = item.title;
+  document.getElementById("challenge").value = item.challenge || 1;
   document.getElementById("week").value = item.week;
   document.getElementById("programDay").value = item.programDay;
   document.getElementById("duration").value = item.duration;
@@ -878,6 +776,7 @@ function escapeHtml(text) {
 window.toggleDone = toggleDone;
 window.editItem = editItem;
 window.deleteItemFromAdmin = deleteItemFromAdmin;
+window.changeChallengeWeek = changeChallengeWeek;
 
 async function bootstrap() {
   if (document.getElementById("exerciseForm")) {

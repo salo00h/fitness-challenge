@@ -1056,3 +1056,97 @@ textarea {
     grid-template-columns: 1fr;
   }
 }
+
+/* بوكسات التحديات المتعددة */
+.days {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 24px;
+}
+
+.challenge-box {
+  padding: 24px;
+  border-radius: 30px;
+  background: linear-gradient(180deg, #fff, #fff7fa);
+  border-color: #ffd1df;
+}
+
+.challenge-head {
+  display: grid;
+  grid-template-columns: 1fr 220px;
+  gap: 18px;
+  align-items: center;
+  margin-bottom: 18px;
+}
+
+.challenge-kicker {
+  display: inline-block;
+  color: var(--pink);
+  background: var(--soft);
+  padding: 7px 12px;
+  border-radius: 999px;
+  font-weight: bold;
+  margin-bottom: 10px;
+}
+
+.challenge-head h2 {
+  margin: 0 0 6px;
+  font-size: 32px;
+}
+
+.challenge-head p {
+  margin: 0;
+  color: var(--muted);
+  font-weight: bold;
+}
+
+.challenge-progress {
+  background: white;
+  border: 1px solid var(--border);
+  border-radius: 22px;
+  padding: 16px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, .05);
+}
+
+.challenge-progress strong {
+  display: block;
+  color: var(--pink);
+  font-size: 38px;
+}
+
+.challenge-progress span {
+  color: var(--muted);
+  font-weight: bold;
+}
+
+.challenge-week-nav {
+  background: white;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 10px;
+}
+
+.challenge-week-nav small {
+  color: var(--pink);
+}
+
+.challenge-days {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 18px;
+  margin-top: 18px;
+}
+
+@media(max-width:900px) {
+  .challenge-head {
+    grid-template-columns: 1fr;
+  }
+
+  .challenge-days {
+    grid-template-columns: 1fr;
+  }
+
+  .challenge-week-nav {
+    border-radius: 22px;
+  }
+}
