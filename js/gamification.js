@@ -6,7 +6,7 @@ import {
   getTodayAbsoluteDay,
   isFutureProgramDayItems
 } from "./commitment.js";
-import { calcUserStats } from "./participants.js";
+import { calcUserStats, compareParticipantRank } from "./participants.js";
 import {
   escapeHtml,
   formatLocalDate,
@@ -216,13 +216,7 @@ function challengeList(data) {
 }
 
 function sortRows(rows) {
-  return rows.slice().sort((a, b) =>
-    b.stats.commitment - a.stats.commitment ||
-    b.stats.percent - a.stats.percent ||
-    b.stats.streak - a.stats.streak ||
-    b.stats.minutes - a.stats.minutes ||
-    normalizeUserName(a.user.name).localeCompare(normalizeUserName(b.user.name), "ar")
-  );
+  return rows.slice().sort(compareParticipantRank);
 }
 
 export function buildCompetitionRows(data, users = state.cachedParticipants || []) {

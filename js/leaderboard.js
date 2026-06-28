@@ -1,7 +1,7 @@
 import { collection, db, getDocs } from "./firebase.js";
 import { USERS_COLLECTION } from "./constants.js";
 import { getData } from "./challengeMeta.js";
-import { calcUserStats } from "./participants.js";
+import { calcUserStats, compareParticipantRank } from "./participants.js";
 import { escapeHtml, normalizeUserName } from "./utils.js";
 import { getUserAvatar, showPop } from "./ui.js";
 
@@ -13,13 +13,7 @@ export async function fetchParticipantUsers() {
 }
 
 export function sortLeaderboardRows(rows) {
-  return rows.slice().sort((a, b) =>
-    b.stats.commitment - a.stats.commitment ||
-    b.stats.percent - a.stats.percent ||
-    b.stats.streak - a.stats.streak ||
-    b.stats.minutes - a.stats.minutes ||
-    normalizeUserName(a.user.name).localeCompare(normalizeUserName(b.user.name), "ar")
-  );
+  return rows.slice().sort(compareParticipantRank);
 }
 
 export function buildLeaderboardRows(data, users) {
@@ -67,8 +61,8 @@ function renderLeaderboardShowcase(rows) {
   if (rows.length === 0) return "";
 
   const topCommitment = rows[0];
-  const topStreak = rows.slice().sort((a, b) => b.stats.streak - a.stats.streak)[0];
-  const topMinutes = rows.slice().sort((a, b) => b.stats.minutes - a.stats.minutes)[0];
+  const topStreak = rows.slice().sort((a, b) => b.stats.streak - a.stats.streak || compareParticipantRank(a, b))[0];
+  const topMinutes = rows.slice().sort((a, b) => b.stats.minutes - a.stats.minutes || compareParticipantRank(a, b))[0];
 
   return `
     <section class="leaderboard-showcase showcase-rail">

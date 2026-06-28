@@ -2,7 +2,7 @@ import { DAY_MS } from "./constants.js";
 import { getData } from "./challengeMeta.js";
 import { getExpectedDate } from "./commitment.js";
 import { fetchParticipantUsers } from "./leaderboard.js";
-import { calcUserStats } from "./participants.js";
+import { calcUserStats, compareParticipantRank } from "./participants.js";
 import { getUserAvatar, showPop } from "./ui.js";
 import {
   escapeHtml,
@@ -71,9 +71,7 @@ function buildRows(data, users) {
 function pickMax(rows, metric) {
   return rows.slice().sort((a, b) =>
     Number(b[metric] ?? b.stats[metric] ?? 0) - Number(a[metric] ?? a.stats[metric] ?? 0) ||
-    b.stats.commitment - a.stats.commitment ||
-    b.stats.percent - a.stats.percent ||
-    normalizeUserName(a.user.name).localeCompare(normalizeUserName(b.user.name), "ar")
+    compareParticipantRank(a, b)
   )[0];
 }
 
@@ -82,7 +80,7 @@ function pickFastest(rows) {
     .filter(row => row.fastestWeek)
     .sort((a, b) =>
       a.fastestWeek.elapsedDays - b.fastestWeek.elapsedDays ||
-      b.stats.commitment - a.stats.commitment
+      compareParticipantRank(a, b)
     )[0];
 }
 
@@ -107,12 +105,7 @@ function renderWinnerCard(item) {
 }
 
 function renderTopRows(rows) {
-  const ranked = rows.slice().sort((a, b) =>
-    b.stats.commitment - a.stats.commitment ||
-    b.stats.percent - a.stats.percent ||
-    b.stats.streak - a.stats.streak ||
-    b.stats.minutes - a.stats.minutes
-  );
+  const ranked = rows.slice().sort(compareParticipantRank);
 
   return `
     <section class="fame-ranking">

@@ -25,7 +25,7 @@ import {
   updateProgressBoard,
   workoutOnly
 } from "./progress.js";
-import { calcUserStats, participantRankLabel } from "./participants.js";
+import { calcUserStats, compareParticipantRank, participantRankLabel } from "./participants.js";
 import {
   confetti,
   playDing,
@@ -116,21 +116,15 @@ export function renderHomeCompetitionMini(data) {
       stats: calcUserStats(data, user.done || {}),
       isMe: String(user.name || "").trim().toLowerCase() === String(state.currentUser || "").trim().toLowerCase()
     }))
-    .sort((a, b) =>
-      b.stats.commitment - a.stats.commitment ||
-      b.stats.percent - a.stats.percent ||
-      b.stats.streak - a.stats.streak ||
-      b.stats.minutes - a.stats.minutes ||
-      String(a.user.name).localeCompare(String(b.user.name), "ar")
-    );
+    .sort(compareParticipantRank);
 
   const currentRankIndex = rows.findIndex(row => row.isMe);
   const topRows = rows.slice(0, 3);
 
   box.innerHTML = `
     <div class="section-title">
-      <h2>Ù„Ù…Ø­Ø© Ø§Ù„Ù…Ù†Ø§ÙØ³Ø©</h2>
-      <span>${currentRankIndex >= 0 ? participantRankLabel(currentRankIndex) : "Ø§Ù„ØªØ±ØªÙŠØ¨ Ø§Ù„ÙƒØ§Ù…Ù„"}</span>
+      <h2>لمحة المنافسة</h2>
+      <span>${currentRankIndex >= 0 ? participantRankLabel(currentRankIndex) : "الترتيب الكامل"}</span>
     </div>
     <div class="mini-rank-list">
       ${topRows.map((row, index) => `
@@ -139,12 +133,12 @@ export function renderHomeCompetitionMini(data) {
           <span>${escapeHtml(row.user.avatar || "🌸")}</span>
           <div>
             <b>${escapeHtml(row.user.name)}</b>
-            <small>${row.stats.commitment}% Ø§Ù„ØªØ²Ø§Ù… · ${row.stats.percent}% Ø¥Ù†Ø¬Ø§Ø² · Streak ${row.stats.streak}</small>
+            <small>${row.stats.commitment}% التزام · ${row.stats.percent}% إنجاز · Streak ${row.stats.streak}</small>
           </div>
         </article>
       `).join("")}
     </div>
-    <a class="mini-board-link" href="leaderboard.html">ÙØªØ­ Ù„ÙˆØ­Ø© Ø§Ù„ØªØ±ØªÙŠØ¨ Ø§Ù„ÙƒØ§Ù…Ù„Ø©</a>
+    <a class="mini-board-link" href="leaderboard.html">فتح لوحة الترتيب الكاملة</a>
   `;
 }
 

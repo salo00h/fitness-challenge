@@ -1,6 +1,7 @@
 import { getData, challengeName } from "./challengeMeta.js";
 import { getExpectedDate } from "./commitment.js";
 import { buildLeaderboardRows, fetchParticipantUsers } from "./leaderboard.js";
+import { compareParticipantRank } from "./participants.js";
 import { getProgramDayGroups } from "./progress.js";
 import { dayName, isDone, normalizeUserName, startOfDay, weekName } from "./utils.js";
 import { showPop } from "./ui.js";
@@ -75,9 +76,7 @@ function getTodayPendingUsers(data, users) {
 function pickBest(rows, metric) {
   return rows.slice().sort((a, b) =>
     b.stats[metric] - a.stats[metric] ||
-    b.stats.commitment - a.stats.commitment ||
-    b.stats.percent - a.stats.percent ||
-    normalizeUserName(a.user.name).localeCompare(normalizeUserName(b.user.name), "ar")
+    compareParticipantRank(a, b)
   )[0];
 }
 

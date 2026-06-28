@@ -8,7 +8,7 @@ import {
   getCompletedWeeks,
   workoutOnly
 } from "./progress.js";
-import { escapeHtml, getProgressTitle, isDone, normalizeUserName, weekName } from "./utils.js";
+import { escapeHtml, getCompletedAt, getProgressTitle, isDone, normalizeUserName, weekName } from "./utils.js";
 import { getUserAvatar } from "./ui.js";
 
 export function isCurrentUserName(name) {
@@ -64,6 +64,24 @@ export function getUserBadges(stats, rankIndex = 99) {
   return badges.slice(0, 4);
 }
 
+export function getLatestCompletionMs(done = {}) {
+  const times = Object.values(done || {})
+    .map(record => getCompletedAt(record))
+    .filter(Boolean)
+    .map(date => date.getTime());
+
+  return times.length ? Math.max(...times) : Number.MAX_SAFE_INTEGER;
+}
+
+export function compareParticipantRank(a, b) {
+  return b.stats.commitment - a.stats.commitment ||
+    b.stats.percent - a.stats.percent ||
+    b.stats.streak - a.stats.streak ||
+    b.stats.minutes - a.stats.minutes ||
+    getLatestCompletionMs(a.user.done || {}) - getLatestCompletionMs(b.user.done || {}) ||
+    String(a.user.name).localeCompare(String(b.user.name), "ar");
+}
+
 export function participantRankLabel(index) {
   if (index === 0) return "🥇 المركز الأول";
   if (index === 1) return "🥈 المركز الثاني";
@@ -105,13 +123,7 @@ export async function renderParticipantsBoard(data, options = {}) {
       return { user, stats, isMe };
     })
     .filter(item => item.isMe || item.stats.percent > 0)
-    .sort((a, b) =>
-      b.stats.commitment - a.stats.commitment ||
-      b.stats.percent - a.stats.percent ||
-      b.stats.streak - a.stats.streak ||
-      b.stats.minutes - a.stats.minutes ||
-      String(a.user.name).localeCompare(String(b.user.name), "ar")
-    );
+    .sort(compareParticipantRank);
 
   if (visibleUsers.length === 0) {
     board.innerHTML = "";
@@ -191,9 +203,7 @@ export function renderHallOfFame(data) {
 
   const pick = metric => [...rows].sort((a, b) =>
     b.stats[metric] - a.stats[metric] ||
-    b.stats.percent - a.stats.percent ||
-    b.stats.minutes - a.stats.minutes ||
-    String(a.user.name).localeCompare(String(b.user.name), "ar")
+    compareParticipantRank(a, b)
   )[0];
 
   const winners = [
