@@ -148,6 +148,62 @@ nav a.is-active {
   line-height: 1.7;
 }
 
+.showcase-rail {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+  margin: 0 0 22px;
+}
+
+.showcase-card {
+  min-height: 132px;
+  display: grid;
+  align-content: center;
+  gap: 8px;
+  padding: 18px;
+  border: 1px solid var(--border);
+  border-radius: 24px;
+  background: rgba(255, 255, 255, .94);
+  box-shadow: 0 14px 34px rgba(0, 0, 0, .055);
+  position: relative;
+  overflow: hidden;
+}
+
+.showcase-card:before {
+  content: "";
+  position: absolute;
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  background: var(--soft);
+  left: -38px;
+  top: -38px;
+  opacity: .75;
+}
+
+.showcase-card>* {
+  position: relative;
+  z-index: 1;
+}
+
+.showcase-card.is-primary {
+  border-color: #ffd1df;
+  background: linear-gradient(135deg, #fff, #fff5f8);
+}
+
+.showcase-card span,
+.showcase-card small {
+  color: var(--muted);
+  font-weight: bold;
+}
+
+.showcase-card strong {
+  color: var(--pink);
+  font-size: clamp(18px, 2vw, 26px);
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
 .section-title {
   display: flex;
   justify-content: space-between;
@@ -921,17 +977,65 @@ textarea {
 }
 
 .pop-toast {
-  min-width: 230px;
-  max-width: min(360px, calc(100vw - 36px));
-  padding: 13px 18px;
-  border-radius: 18px;
-  color: white;
-  font-weight: bold;
+  min-width: 270px;
+  max-width: min(390px, calc(100vw - 36px));
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 10px;
+  align-items: center;
+  padding: 13px 14px 17px;
+  border: 1px solid #ffd1df;
+  border-radius: 20px;
+  color: var(--text);
+  background: rgba(255, 255, 255, .96);
+  backdrop-filter: blur(12px);
   text-align: right;
-  box-shadow: 0 18px 38px rgba(255, 11, 95, .24);
+  box-shadow: 0 18px 42px rgba(17, 24, 39, .14);
   transform: translateY(-12px) scale(.94);
   opacity: 0;
   transition: .25s ease;
+  overflow: hidden;
+  pointer-events: auto;
+  position: relative;
+}
+
+.pop-toast strong {
+  font-size: 14px;
+  line-height: 1.55;
+}
+
+.pop-icon {
+  width: 30px;
+  height: 30px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  color: white;
+  background: var(--pink);
+  font-weight: bold;
+}
+
+.pop-toast button {
+  width: 28px;
+  height: 28px;
+  margin: 0;
+  padding: 0;
+  border-radius: 50%;
+  background: #f1f5f9;
+  color: var(--muted);
+  box-shadow: none;
+}
+
+.pop-toast i {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: 100%;
+  height: 4px;
+  background: var(--pink);
+  transform-origin: right;
+  animation: toastLife 3.6s linear forwards;
 }
 
 .pop-toast.is-visible {
@@ -939,12 +1043,129 @@ textarea {
   opacity: 1;
 }
 
-.pop-toast.is-success {
-  background: linear-gradient(135deg, var(--pink), var(--pink2));
+.pop-toast.is-success .pop-icon,
+.pop-toast.is-success i {
+  background: var(--green);
 }
 
-.pop-toast.is-error {
-  background: linear-gradient(135deg, #d90429, #ff5c7a);
+.pop-toast.is-info .pop-icon,
+.pop-toast.is-info i {
+  background: #2563eb;
+}
+
+.pop-toast.is-error .pop-icon,
+.pop-toast.is-error i {
+  background: #dc2626;
+}
+
+.moment-pop-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100001;
+  display: grid;
+  place-items: center;
+  padding: 22px;
+  background: rgba(17, 24, 39, .28);
+  backdrop-filter: blur(8px);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .22s ease;
+}
+
+.moment-pop-overlay.is-visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.moment-pop-card {
+  width: min(430px, 100%);
+  display: grid;
+  gap: 10px;
+  justify-items: center;
+  text-align: center;
+  background: white;
+  border: 1px solid #ffd1df;
+  border-radius: 30px;
+  padding: 28px;
+  box-shadow: 0 28px 70px rgba(17, 24, 39, .24);
+  transform: translateY(12px) scale(.94);
+  transition: transform .22s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.moment-pop-overlay.is-visible .moment-pop-card {
+  transform: translateY(0) scale(1);
+}
+
+.moment-pop-card:before {
+  content: "";
+  position: absolute;
+  inset: -40% -20% auto;
+  height: 180px;
+  background: radial-gradient(circle, var(--soft), transparent 70%);
+}
+
+.moment-pop-card>* {
+  position: relative;
+  z-index: 1;
+}
+
+.moment-close {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  width: 34px;
+  height: 34px;
+  margin: 0;
+  padding: 0;
+  border-radius: 50%;
+  background: #f8fafc;
+  color: var(--muted);
+  box-shadow: none;
+}
+
+.moment-burst {
+  width: 74px;
+  height: 74px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--pink), var(--pink2));
+  color: white;
+  font-size: 32px;
+  box-shadow: 0 18px 34px rgba(255, 11, 95, .24);
+  animation: momentPop 1.4s ease infinite alternate;
+}
+
+.moment-pop-card span {
+  color: var(--pink);
+  font-weight: bold;
+}
+
+.moment-pop-card h2 {
+  margin: 0;
+  color: var(--text);
+  font-size: 28px;
+}
+
+.moment-pop-card p {
+  margin: 0;
+  color: var(--muted);
+  font-weight: bold;
+  line-height: 1.8;
+}
+
+@keyframes toastLife {
+  to {
+    transform: scaleX(0);
+  }
+}
+
+@keyframes momentPop {
+  to {
+    transform: rotate(-4deg) scale(1.06);
+  }
 }
 
 .admin-locked main.container {
@@ -1547,6 +1768,10 @@ textarea {
 
   .daily-quote strong {
     font-size: 18px;
+  }
+
+  .showcase-rail {
+    grid-template-columns: 1fr;
   }
 
   .section-title {
@@ -3033,6 +3258,7 @@ textarea {
 
 :root[data-theme="dark"] .card,
 :root[data-theme="dark"] .daily-quote,
+:root[data-theme="dark"] .showcase-card,
 :root[data-theme="dark"] .today-mission-card,
 :root[data-theme="dark"] .activity-feed,
 :root[data-theme="dark"] .participant-card,
@@ -3049,6 +3275,8 @@ textarea {
 :root[data-theme="dark"] .admin-tool-panel,
 :root[data-theme="dark"] .current-rank-summary,
 :root[data-theme="dark"] .admin-tabs,
+:root[data-theme="dark"] .moment-pop-card,
+:root[data-theme="dark"] .pop-toast,
 :root[data-theme="dark"] .login-card {
   background: #111827;
   border-color: var(--border);

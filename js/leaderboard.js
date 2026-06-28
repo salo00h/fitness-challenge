@@ -63,6 +63,34 @@ function renderSummary(rows) {
   `;
 }
 
+function renderLeaderboardShowcase(rows) {
+  if (rows.length === 0) return "";
+
+  const topCommitment = rows[0];
+  const topStreak = rows.slice().sort((a, b) => b.stats.streak - a.stats.streak)[0];
+  const topMinutes = rows.slice().sort((a, b) => b.stats.minutes - a.stats.minutes)[0];
+
+  return `
+    <section class="leaderboard-showcase showcase-rail">
+      <article class="showcase-card is-primary">
+        <span>نجمة الالتزام</span>
+        <strong>${escapeHtml(normalizeUserName(topCommitment.user.name))}</strong>
+        <small>${topCommitment.stats.commitment}% التزام</small>
+      </article>
+      <article class="showcase-card">
+        <span>أطول سلسلة</span>
+        <strong>${escapeHtml(normalizeUserName(topStreak.user.name))}</strong>
+        <small>${topStreak.stats.streak} أيام متتالية</small>
+      </article>
+      <article class="showcase-card">
+        <span>أكثر دقائق</span>
+        <strong>${escapeHtml(normalizeUserName(topMinutes.user.name))}</strong>
+        <small>${topMinutes.stats.minutes} دقيقة</small>
+      </article>
+    </section>
+  `;
+}
+
 function renderPodium(rows) {
   if (rows.length === 0) return "";
 
@@ -153,6 +181,7 @@ export async function initLeaderboardPage() {
     const rows = buildLeaderboardRows(data, users);
 
     box.innerHTML = `
+      ${renderLeaderboardShowcase(rows)}
       ${renderSummary(rows)}
       ${renderLeaderboard(rows)}
     `;

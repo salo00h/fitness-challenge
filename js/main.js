@@ -7,6 +7,7 @@ import {
   closeCertificate,
   renderActiveNav,
   renderDailyQuote,
+  renderMotivationShowcase,
   renderThemeToggle,
   toggleTheme
 } from "./ui.js";
@@ -90,11 +91,13 @@ async function bootstrap() {
 
   if (document.getElementById("days")) {
     await renderViewer();
+    renderMotivationShowcase();
   }
 
   if (document.getElementById("doneCount")) {
     const data = await getData();
     updateProgressBoard(data);
+    renderMotivationShowcase(data);
     bindWhatsappReport(data);
     await renderParticipantsBoard(data);
   }

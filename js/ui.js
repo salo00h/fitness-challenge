@@ -90,6 +90,54 @@ export function renderDailyQuote() {
   `;
 }
 
+export function renderMotivationShowcase(data = state.cachedData) {
+  const main = document.querySelector("main.container");
+  if (!main || (!document.getElementById("days") && !document.getElementById("doneCount"))) return;
+
+  const anchor = document.getElementById("dailyQuote") || main.querySelector(".hero, .stats-hero");
+  if (!anchor) return;
+
+  const safeData = Array.isArray(data) ? data : [];
+  const done = state.currentDone || {};
+  const completed = safeData.filter(item => isDone(done[item.id])).length;
+  const total = safeData.length;
+  const percent = total ? Math.round((completed / total) * 100) : 0;
+  const summary = getTodayMissionSummary(safeData);
+  const missionText = {
+    complete: "مهمة اليوم مكتملة",
+    rest: "راحة وتعافي",
+    locked: "تفتح في موعدها",
+    empty: "لا توجد مهمة اليوم",
+    workout: summary.remaining === 1 ? "باقي تمرين واحد" : `${summary.remaining} تمارين اليوم`
+  }[summary.state] || "مهمة اليوم";
+
+  let box = document.getElementById("motivationShowcase");
+  if (!box) {
+    box = document.createElement("section");
+    box.id = "motivationShowcase";
+    box.className = "showcase-rail";
+    anchor.insertAdjacentElement("afterend", box);
+  }
+
+  box.innerHTML = `
+    <article class="showcase-card is-primary">
+      <span>لمحة اليوم</span>
+      <strong>${escapeHtml(missionText)}</strong>
+      <small>${summary.state === "complete" ? "حافظي على الإيقاع" : "خطوة صغيرة تصنع فرقًا"}</small>
+    </article>
+    <article class="showcase-card">
+      <span>التقدم العام</span>
+      <strong>${percent}%</strong>
+      <small>${completed} من ${total || 0} عنصر مكتمل</small>
+    </article>
+    <article class="showcase-card">
+      <span>دفعة سريعة</span>
+      <strong>${getDailyQuote()}</strong>
+      <small>كل يوم له مكسبه</small>
+    </article>
+  `;
+}
+
 export function getTodayMissionSummary(data = state.cachedData) {
   const safeData = Array.isArray(data) ? data : [];
   if (safeData.length === 0) return { state: "empty", remaining: 0 };
@@ -276,6 +324,41 @@ export function showChallengeCertificate(challenge) {
   document.body.appendChild(overlay);
 }
 
+export function closeMomentPop() {
+  const overlay = document.getElementById("momentPopOverlay");
+  if (!overlay) return;
+  overlay.classList.remove("is-visible");
+  setTimeout(() => overlay.remove(), 220);
+}
+
+export function showMomentPop(title, message, type = "success") {
+  closeMomentPop();
+
+  const overlay = document.createElement("div");
+  overlay.id = "momentPopOverlay";
+  overlay.className = `moment-pop-overlay is-${type === "error" ? "error" : "success"}`;
+  overlay.innerHTML = `
+    <section class="moment-pop-card">
+      <button type="button" class="moment-close" aria-label="إغلاق">×</button>
+      <div class="moment-burst" aria-hidden="true">✨</div>
+      <span>${type === "error" ? "تنبيه" : "إنجاز"}</span>
+      <h2>${escapeHtml(title)}</h2>
+      <p>${escapeHtml(message)}</p>
+    </section>
+  `;
+
+  document.body.appendChild(overlay);
+  overlay.querySelector(".moment-close").onclick = closeMomentPop;
+  overlay.addEventListener("click", event => {
+    if (event.target === overlay) closeMomentPop();
+  });
+
+  requestAnimationFrame(() => overlay.classList.add("is-visible"));
+  setTimeout(() => {
+    if (document.getElementById("momentPopOverlay") === overlay) closeMomentPop();
+  }, 3600);
+}
+
 export function showPop(message, type = "success") {
   let stack = document.getElementById("popStack");
   if (!stack) {
@@ -285,14 +368,24 @@ export function showPop(message, type = "success") {
     document.body.appendChild(stack);
   }
 
+  const normalizedType = type === "error" ? "error" : type === "info" ? "info" : "success";
+  const icon = normalizedType === "error" ? "!" : normalizedType === "info" ? "i" : "✓";
   const pop = document.createElement("div");
-  pop.className = `pop-toast ${type === "error" ? "is-error" : "is-success"}`;
-  pop.textContent = message;
+  pop.className = `pop-toast is-${normalizedType}`;
+  pop.innerHTML = `
+    <span class="pop-icon">${icon}</span>
+    <strong>${escapeHtml(message)}</strong>
+    <button type="button" aria-label="إغلاق">×</button>
+    <i></i>
+  `;
   stack.appendChild(pop);
 
-  requestAnimationFrame(() => pop.classList.add("is-visible"));
-  setTimeout(() => {
+  const close = () => {
     pop.classList.remove("is-visible");
     setTimeout(() => pop.remove(), 260);
-  }, 2600);
+  };
+
+  pop.querySelector("button").onclick = close;
+  requestAnimationFrame(() => pop.classList.add("is-visible"));
+  setTimeout(close, 3600);
 }

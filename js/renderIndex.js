@@ -30,6 +30,7 @@ import {
   renderGreetingMessage,
   renderSkeletonCards,
   showChallengeCertificate,
+  showMomentPop,
   showPop,
   strongConfetti
 } from "./ui.js";
@@ -263,6 +264,7 @@ export function notifyDayProgress(dayItems, done) {
 
   if (remaining.length === 0) {
     setTimeout(confetti, 150);
+    showMomentPop("اليوم اكتمل", "شغل ممتاز. خذي لحظة فخر صغيرة وكملي بنفس النفس.");
     showPop("ممتاز! اكتمل هذا اليوم 🎉");
     return;
   }
