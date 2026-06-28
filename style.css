@@ -4417,3 +4417,439 @@ textarea {
     grid-template-columns: 78px 1fr 48px;
   }
 }
+
+@media(max-width:640px) {
+  body {
+    background:
+      radial-gradient(circle at top right, var(--soft) 0, transparent 260px),
+      linear-gradient(180deg, #fff, #fafafa);
+  }
+
+  .topbar {
+    align-items: stretch;
+    padding: 10px 12px;
+    gap: 9px;
+    box-shadow: 0 10px 28px rgba(0, 0, 0, .06);
+  }
+
+  .brand {
+    width: 100%;
+    text-align: center;
+    font-size: 19px;
+    line-height: 1.4;
+  }
+
+  nav {
+    width: 100%;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    gap: 8px;
+    overflow-x: auto;
+    padding: 2px 0 7px;
+    scroll-snap-type: x proximity;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  nav::-webkit-scrollbar {
+    display: none;
+  }
+
+  nav a {
+    flex: 0 0 auto;
+    scroll-snap-align: start;
+    white-space: nowrap;
+    padding: 8px 12px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, .72);
+    border: 1px solid rgba(255, 209, 223, .75);
+    font-size: 13px;
+  }
+
+  .theme-toggle,
+  .sound-toggle {
+    flex: 1 1 calc(50% - 6px);
+    width: auto;
+    min-height: 40px;
+    padding: 8px 10px;
+    font-size: 13px;
+  }
+
+  .container,
+  .inbox-dashboard,
+  .fame-dashboard,
+  .achievements-dashboard,
+  .store-dashboard {
+    width: 100%;
+    margin: 14px auto 28px;
+    padding: 0 12px;
+  }
+
+  .hero,
+  .stats-hero {
+    border-radius: 22px;
+    padding: 22px 18px;
+    margin-bottom: 14px;
+  }
+
+  .hero:after {
+    width: 120px;
+    height: 120px;
+    left: -46px;
+    top: -44px;
+  }
+
+  .hero h1,
+  .stats-hero h1 {
+    font-size: 28px;
+    line-height: 1.35;
+  }
+
+  .hero p,
+  .stats-hero p {
+    font-size: 15px;
+    line-height: 1.8;
+  }
+
+  .home-tabs {
+    position: static;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 6px;
+    padding: 7px;
+    margin-bottom: 14px;
+    border-radius: 18px;
+  }
+
+  .home-tabs button {
+    min-height: 42px;
+    padding: 7px 4px;
+    border-radius: 13px;
+    font-size: 13px;
+    line-height: 1.3;
+  }
+
+  .daily-quote,
+  .greeting-message,
+  .user-bar,
+  .today-mission-card,
+  .activity-feed,
+  .home-competition-mini,
+  .game-card,
+  .challenge-box,
+  .achievement-tile,
+  .shop-item,
+  .chart-card,
+  .wheel-panel,
+  .shop-panel,
+  .message-item,
+  .fame-card,
+  .fame-ranking,
+  .profile-card,
+  .countdown-card,
+  .stat-card,
+  .progress-card,
+  .achievement-card,
+  .calendar-card,
+  .hall-card {
+    border-radius: 18px;
+    padding: 15px;
+    box-shadow: 0 12px 26px rgba(0, 0, 0, .055);
+  }
+
+  .daily-quote strong {
+    font-size: 18px;
+    line-height: 1.75;
+  }
+
+  .quick-actions {
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin-bottom: 14px;
+  }
+
+  .quick-actions button {
+    grid-column: 1 / -1;
+  }
+
+  .quick-actions a,
+  .quick-actions button,
+  .mini-board-link,
+  .game-link {
+    min-height: 44px;
+    border-radius: 14px;
+    padding: 9px 10px;
+    font-size: 13px;
+    text-align: center;
+  }
+
+  .section-title {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .section-title h2 {
+    font-size: 22px;
+  }
+
+  .section-title span {
+    border-radius: 12px;
+    line-height: 1.5;
+  }
+
+  .today-mission-head,
+  .participant-head,
+  .profile-head,
+  .game-card-head {
+    align-items: flex-start;
+    flex-direction: row;
+  }
+
+  .today-mission-head {
+    flex-direction: column;
+  }
+
+  .today-mission-head h2,
+  .challenge-head h2,
+  .game-card strong,
+  .message-item h2,
+  .fame-card strong {
+    font-size: 21px;
+    line-height: 1.45;
+  }
+
+  .today-mission-list {
+    gap: 8px;
+  }
+
+  .today-mission-item {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 4px;
+    border-radius: 14px;
+  }
+
+  .day-complete-btn,
+  .done-btn,
+  .challenge-enter-btn,
+  .challenge-back-btn {
+    width: 100%;
+    min-height: 45px;
+    border-radius: 14px;
+  }
+
+  .game-card {
+    min-height: auto;
+    gap: 11px;
+  }
+
+  .game-card-head>span {
+    width: 44px;
+    height: 44px;
+    border-radius: 14px;
+    font-size: 22px;
+  }
+
+  .game-card p,
+  .game-card em {
+    line-height: 1.75;
+  }
+
+  .showcase-rail,
+  .home-page #gamificationHub .game-grid,
+  .challenge-days,
+  .participants-grid,
+  .progress-board,
+  .stats-board,
+  .profile-grid,
+  .leaderboard-summary,
+  .leaderboard-podium,
+  .fame-grid,
+  .achievement-grid-full,
+  .shop-grid,
+  .charts-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .challenge-box {
+    width: 100%;
+  }
+
+  .challenge-box.is-closed,
+  .challenge-box.is-open {
+    width: 100%;
+    padding: 15px;
+    border-radius: 20px;
+  }
+
+  .challenge-box.is-closed .challenge-cover {
+    height: 148px;
+    border-radius: 16px;
+    margin-bottom: 12px;
+  }
+
+  .challenge-box.is-open .challenge-cover {
+    height: 150px;
+    border-radius: 16px;
+  }
+
+  .challenge-cover span {
+    right: 12px;
+    bottom: 12px;
+    border-radius: 12px;
+    font-size: 13px;
+  }
+
+  .challenge-description {
+    font-size: 14px;
+    line-height: 1.8;
+  }
+
+  .challenge-week-nav {
+    grid-template-columns: 1fr;
+    gap: 8px;
+    padding: 10px;
+    border-radius: 16px;
+  }
+
+  .challenge-week-nav button {
+    width: 100%;
+  }
+
+  .day-card {
+    padding: 14px;
+    border-radius: 18px;
+  }
+
+  .day-head {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .day-card.is-today .day-head h2:after {
+    margin-inline-start: 0;
+    margin-top: 6px;
+  }
+
+  .exercise {
+    grid-template-columns: 1fr;
+    border-radius: 16px;
+  }
+
+  .exercise .image-wrap,
+  .exercise img {
+    border-radius: 14px;
+  }
+
+  .activity-item,
+  .mini-rank-list article,
+  .leaderboard-row,
+  .message-item,
+  .fame-list article {
+    border-radius: 16px;
+    padding: 12px;
+  }
+
+  .mini-rank-list article,
+  .fame-list article {
+    grid-template-columns: 1fr;
+    text-align: center;
+  }
+
+  .mini-rank-list strong,
+  .mini-rank-list article>span,
+  .fame-list article>strong,
+  .fame-list article>span {
+    width: 100%;
+  }
+
+  .leaderboard-row {
+    gap: 10px;
+  }
+
+  .leaderboard-rank,
+  .leaderboard-person,
+  .leaderboard-meter,
+  .leaderboard-stat {
+    width: 100%;
+  }
+
+  .message-actions {
+    width: 100%;
+    justify-content: stretch;
+  }
+
+  .message-actions button {
+    flex: 1 1 auto;
+  }
+
+  .wheel-disc {
+    width: min(220px, 76vw);
+  }
+
+  .wheel-disc span {
+    transform: rotate(calc(var(--i) * 72deg)) translateY(-78px) rotate(calc(var(--i) * -72deg));
+  }
+
+  .chart-row {
+    grid-template-columns: 1fr;
+    gap: 6px;
+  }
+
+  .chart-row strong {
+    text-align: right;
+  }
+
+  .login-card,
+  .certificate-card,
+  .moment-pop-card {
+    border-radius: 22px;
+    padding: 22px 18px;
+  }
+}
+
+@media(max-width:380px) {
+  .container,
+  .inbox-dashboard,
+  .fame-dashboard,
+  .achievements-dashboard,
+  .store-dashboard {
+    padding: 0 9px;
+  }
+
+  .home-tabs button,
+  nav a,
+  .quick-actions a,
+  .quick-actions button {
+    font-size: 12px;
+  }
+
+  .hero h1,
+  .stats-hero h1 {
+    font-size: 25px;
+  }
+
+  .daily-quote,
+  .today-mission-card,
+  .game-card,
+  .challenge-box,
+  .activity-feed,
+  .home-competition-mini {
+    padding: 13px;
+  }
+}
+
+@media(max-width:640px) {
+  :root[data-theme="dark"] body,
+  :root[data-theme="night"] body {
+    background:
+      radial-gradient(circle at top right, rgba(244, 114, 182, .12) 0, transparent 260px),
+      linear-gradient(180deg, #0f172a, #020617);
+  }
+
+  :root[data-theme="dark"] nav a,
+  :root[data-theme="night"] nav a {
+    background: rgba(17, 24, 39, .86);
+    border-color: var(--border);
+  }
+}
