@@ -1,4 +1,5 @@
 import { state } from "./state.js";
+import { collection, db, deleteDoc, doc, getDocs, setDoc } from "./firebase.js";
 import { challengeName, challengeNumber } from "./challengeMeta.js";
 import {
   getMissionItemsForChallenge,
@@ -26,8 +27,10 @@ import {
   strongConfetti,
   toggleSoundMuted
 } from "./ui.js";
+import { getCachedGameState } from "./economy.js";
 
 const INBOX_KEY = "fitness_inbox_v1";
+const NOTIFICATIONS_COLLECTION = "notifications";
 const REWARD_KEY = "fitness_daily_reward_v1";
 const RANK_KEY = "fitness_rank_snapshot_v1";
 const MOMENT_KEY = "fitness_daily_moment_seen_v1";
@@ -85,6 +88,127 @@ function message(id, type, title, body, priority = 5) {
   };
 }
 
+function notificationDocId(id) {
+  return `${currentUserKey()}__${encodeURIComponent(String(id || "message"))}`;
+}
+
+function normalizeNotification(item = {}) {
+  return {
+    id: item.id || "message",
+    docId: item.docId || notificationDocId(item.id),
+    userId: item.userId || currentUserKey(),
+    userName: item.userName || state.currentUser || "",
+    type: item.type || "info",
+    title: item.title || "رسالة",
+    body: item.body || "",
+    priority: Number(item.priority) || 5,
+    createdAt: item.createdAt || new Date().toISOString(),
+    updatedAt: item.updatedAt || item.createdAt || new Date().toISOString(),
+    day: item.day || todayKey(),
+    read: !!item.read,
+    archived: !!item.archived
+  };
+}
+
+export function canUseBrowserNotifications() {
+  return "Notification" in window;
+}
+
+export function getBrowserNotificationPermission() {
+  if (!canUseBrowserNotifications()) return "unsupported";
+  return Notification.permission;
+}
+
+export async function requestBrowserNotifications() {
+  if (!canUseBrowserNotifications()) {
+    showPop("المتصفح لا يدعم الإشعارات", "error");
+    return "unsupported";
+  }
+
+  const permission = await Notification.requestPermission();
+  showPop(permission === "granted" ? "تم تفعيل إشعارات المتصفح" : "لم يتم تفعيل إشعارات المتصفح", permission === "granted" ? "success" : "info");
+  return permission;
+}
+
+export function sendBrowserNotification(title, body) {
+  if (getBrowserNotificationPermission() !== "granted") return;
+
+  try {
+    new Notification(title, {
+      body,
+      icon: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='18' fill='%23ff0b5f'/%3E%3Ctext x='32' y='42' font-size='34' text-anchor='middle'%3E%F0%9F%92%AA%3C/text%3E%3C/svg%3E"
+    });
+  } catch (e) { }
+}
+
+export async function getUserNotifications(options = {}) {
+  if (!state.currentUser) return [];
+
+  const { includeArchived = false } = options;
+  const snap = await getDocs(collection(db, NOTIFICATIONS_COLLECTION));
+  return snap.docs
+    .map(entry => normalizeNotification({ docId: entry.id, ...entry.data() }))
+    .filter(item => item.userId === currentUserKey())
+    .filter(item => includeArchived || !item.archived)
+    .sort((a, b) =>
+      Number(a.read) - Number(b.read) ||
+      String(b.createdAt).localeCompare(String(a.createdAt))
+    );
+}
+
+export async function pushUserNotification(item, options = {}) {
+  if (!state.currentUser || !item) return null;
+
+  const row = normalizeNotification(item);
+  const existing = await getUserNotifications({ includeArchived: true });
+  if (existing.some(entry => entry.id === row.id)) return null;
+
+  await setDoc(doc(db, NOTIFICATIONS_COLLECTION, row.docId), row, { merge: true });
+
+  if (options.browser !== false && row.priority >= 8) {
+    sendBrowserNotification(row.title, row.body);
+  }
+
+  return row;
+}
+
+export async function markNotificationRead(docId) {
+  if (!docId) return;
+  await setDoc(doc(db, NOTIFICATIONS_COLLECTION, docId), {
+    read: true,
+    updatedAt: new Date().toISOString()
+  }, { merge: true });
+}
+
+export async function archiveNotification(docId) {
+  if (!docId) return;
+  await setDoc(doc(db, NOTIFICATIONS_COLLECTION, docId), {
+    archived: true,
+    read: true,
+    updatedAt: new Date().toISOString()
+  }, { merge: true });
+}
+
+export async function deleteNotification(docId) {
+  if (!docId) return;
+  await deleteDoc(doc(db, NOTIFICATIONS_COLLECTION, docId));
+}
+
+export async function renderInboxBadge() {
+  const link = document.querySelector('.topbar nav a[href="messages.html"]');
+  if (!link || !state.currentUser) return;
+
+  try {
+    const rows = await getUserNotifications();
+    const unread = rows.filter(item => !item.read).length;
+    link.dataset.unread = unread ? String(unread) : "";
+    link.classList.toggle("has-unread", unread > 0);
+  } catch (e) {
+    link.dataset.unread = "";
+    link.classList.remove("has-unread");
+  }
+}
+
 function challengeList(data) {
   return [...new Set(data.map(challengeNumber))]
     .filter(Number.isFinite)
@@ -139,6 +263,7 @@ export function claimDailyReward(data = state.cachedData, users = state.cachedPa
   localStorage.setItem(storageKey(REWARD_KEY), todayKey());
   playSuccessSound();
   showMomentPop("مكافأة اليوم", `${reward.body} +${reward.xp} XP`);
+  pushUserNotification(message(`daily-reward-claimed-${todayKey()}`, "reward", "مكافأة اليوم", `${reward.body} +${reward.xp} XP`, 8));
   syncInboxMessages(data, users);
   renderGamificationHub(data, users);
 }
@@ -209,6 +334,7 @@ export function buildXpProfile(data = state.cachedData, done = state.currentDone
   const stats = calcUserStats(data, done);
   const reward = getDailyReward();
   const side = getSideChallenge(data, done);
+  const gameState = getCachedGameState();
   const baseXp =
     (stats.completed * 25) +
     stats.minutes +
@@ -218,10 +344,14 @@ export function buildXpProfile(data = state.cachedData, done = state.currentDone
     (stats.percent >= 100 ? 300 : 0);
   const rewardXp = reward.claimed ? reward.xp : 0;
   const sideXp = side.status === "achieved" ? side.xp : 0;
-  const xp = baseXp + rewardXp + sideXp;
+  const bonusXp = Number(gameState.bonusXp) || 0;
+  const xp = baseXp + rewardXp + sideXp + bonusXp;
 
   return {
     xp,
+    bonusXp,
+    gems: Number(gameState.gems) || 0,
+    unlockedItems: gameState.unlockedItems || [],
     stats,
     level: getLevelInfo(xp),
     reward,
@@ -361,6 +491,30 @@ export function syncInboxMessages(data = state.cachedData, users = state.cachedP
   return list;
 }
 
+export async function syncFirebaseInboxMessages(data = state.cachedData, users = state.cachedParticipants || [], options = {}) {
+  if (!state.currentUser) return [];
+
+  const rows = buildCompetitionRows(data, users);
+  const generated = [
+    getRankMovementMessage(rows),
+    ...collectSmartMessages(data, users)
+  ].filter(Boolean);
+  const existing = await getUserNotifications({ includeArchived: true });
+  const existingIds = new Set(existing.map(item => item.id));
+  const created = [];
+
+  for (const item of generated) {
+    if (existingIds.has(item.id)) continue;
+    const row = await pushUserNotification(item, { browser: options.browser !== false });
+    if (row) created.push(row);
+  }
+
+  const rowsAfterSync = await getUserNotifications();
+  saveStoredList(storageKey(INBOX_KEY), rowsAfterSync);
+  await renderInboxBadge();
+  return rowsAfterSync;
+}
+
 export function maybeShowSmartMoment(data = state.cachedData, users = state.cachedParticipants || []) {
   if (!state.currentUser) return;
 
@@ -398,6 +552,44 @@ function renderThemeSwatches() {
   `).join("");
 }
 
+function buildCoachAdvice(profile, rank) {
+  if (profile.side.status === "active") {
+    const remaining = Math.max(0, (profile.side.total || 0) - (profile.side.completed || 0));
+    return {
+      title: "المدربة ضحى",
+      body: remaining === 1
+        ? "بقي لك تمرين واحد فقط. إذا أنهيتِ اليوم قبل 8 مساءً تحصلين على +20 XP."
+        : `باقي لك ${remaining || profile.side.total || 0} تمارين اليوم. خذيها خطوة خطوة.`
+    };
+  }
+
+  if (profile.side.status === "achieved") {
+    return {
+      title: "المدربة ضحى",
+      body: "أحسنتِ اليوم. أنهيتِ المهمة الخاصة ورفعتِ نقاطك بذكاء."
+    };
+  }
+
+  if (rank === 1) {
+    return {
+      title: "المدربة ضحى",
+      body: "أنتِ في الصدارة الآن. حافظي على الإيقاع ولا تعطي المنافسات فرصة."
+    };
+  }
+
+  if (profile.stats.streak >= 7) {
+    return {
+      title: "المدربة ضحى",
+      body: `سلسلة ${profile.stats.streak} أيام قوية جدًا. أهم شيء اليوم لا ينكسر الإيقاع.`
+    };
+  }
+
+  return {
+    title: "المدربة ضحى",
+    body: "أحسنتِ أمس. اليوم نحتاج خطوة صغيرة فقط لتكملي الرحلة بثبات."
+  };
+}
+
 export function renderGamificationHub(data = state.cachedData, users = state.cachedParticipants || []) {
   if (!state.currentUser) return;
 
@@ -415,6 +607,14 @@ export function renderGamificationHub(data = state.cachedData, users = state.cac
   const messages = syncInboxMessages(data, users);
   const rows = buildCompetitionRows(data, users);
   const rank = getCurrentRank(rows);
+  const coach = buildCoachAdvice(profile, rank);
+  const notificationPermission = getBrowserNotificationPermission();
+  const notificationText = {
+    granted: "الإشعارات مفعلة",
+    denied: "الإشعارات مرفوضة",
+    unsupported: "غير مدعومة",
+    default: "السماح بالإشعارات"
+  }[notificationPermission] || "السماح بالإشعارات";
   const nextText = profile.level.next
     ? `${profile.level.remaining} XP للمستوى التالي`
     : "أعلى مستوى مفتوح";
@@ -444,7 +644,18 @@ export function renderGamificationHub(data = state.cachedData, users = state.cac
           </div>
         </div>
         <div class="level-bar"><i style="width:${profile.level.progress}%"></i></div>
-        <em>${nextText}</em>
+        <em>${nextText} · 💎 ${profile.gems} جوهرة${profile.bonusXp ? ` · +${profile.bonusXp} XP إضافية` : ""}</em>
+      </article>
+
+      <article class="game-card coach-card">
+        <div class="game-card-head">
+          <span>🤖</span>
+          <div>
+            <small>${escapeHtml(coach.title)}</small>
+            <strong>نصيحة اليوم</strong>
+          </div>
+        </div>
+        <p>${escapeHtml(coach.body)}</p>
       </article>
 
       <article class="game-card reward-card ${profile.reward.claimed ? "is-claimed" : ""}">
@@ -485,6 +696,30 @@ export function renderGamificationHub(data = state.cachedData, users = state.cac
         <a class="game-link" href="messages.html">فتح الرسائل</a>
       </article>
 
+      <article class="game-card shop-card">
+        <div class="game-card-head">
+          <span>🎡</span>
+          <div>
+            <small>العجلة والمتجر</small>
+            <strong>💎 ${profile.gems} جوهرة</strong>
+          </div>
+        </div>
+        <p>لفّي عجلة الحظ اليومية وافتحي ثيمات وألقاب ومؤثرات خاصة.</p>
+        <a class="game-link" href="store.html">فتح المتجر</a>
+      </article>
+
+      <article class="game-card browser-card">
+        <div class="game-card-head">
+          <span>🔔</span>
+          <div>
+            <small>إشعارات المتصفح</small>
+            <strong>${escapeHtml(notificationText)}</strong>
+          </div>
+        </div>
+        <p>عند السماح بها ستظهر تنبيهات مثل: بقي تمرين واحد أو ستفقدين الـ Streak الليلة.</p>
+        <button type="button" id="browserNotificationBtn" class="sound-toggle-inline" ${notificationPermission === "granted" || notificationPermission === "unsupported" ? "disabled" : ""}>${escapeHtml(notificationText)}</button>
+      </article>
+
       <article class="game-card theme-card">
         <div class="game-card-head">
           <span>🌈</span>
@@ -506,6 +741,14 @@ export function renderGamificationHub(data = state.cachedData, users = state.cac
   if (soundButton) {
     soundButton.onclick = () => {
       toggleSoundMuted();
+      renderGamificationHub(data, users);
+    };
+  }
+
+  const browserButton = document.getElementById("browserNotificationBtn");
+  if (browserButton) {
+    browserButton.onclick = async () => {
+      await requestBrowserNotifications();
       renderGamificationHub(data, users);
     };
   }

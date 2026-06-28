@@ -2,10 +2,16 @@ import { getData } from "./challengeMeta.js";
 import { fetchParticipantUsers } from "./leaderboard.js";
 import { state } from "./state.js";
 import {
+  archiveNotification,
   buildCompetitionRows,
   buildXpProfile,
+  deleteNotification,
+  getBrowserNotificationPermission,
   getCurrentRank,
-  syncInboxMessages
+  markNotificationRead,
+  requestBrowserNotifications,
+  renderInboxBadge,
+  syncFirebaseInboxMessages
 } from "./gamification.js";
 import { escapeHtml, formatDateTime } from "./utils.js";
 import { showPop } from "./ui.js";
@@ -32,13 +38,18 @@ function renderInbox(messages) {
   return `
     <div class="message-list">
       ${messages.map(item => `
-        <article class="message-item is-${escapeHtml(item.type)}">
+        <article class="message-item is-${escapeHtml(item.type)} ${item.read ? "" : "is-new"}">
           <div>
-            <span>${escapeHtml(typeLabel(item.type))}</span>
+            <span>${escapeHtml(typeLabel(item.type))}${item.read ? "" : " · جديد"}</span>
             <h2>${escapeHtml(item.title)}</h2>
             <p>${escapeHtml(item.body)}</p>
           </div>
-          <time>${escapeHtml(formatDateTime(item.createdAt))}</time>
+          <div class="message-actions">
+            <time>${escapeHtml(formatDateTime(item.createdAt))}</time>
+            ${item.read ? "" : `<button type="button" data-action="read" data-doc="${escapeHtml(item.docId)}">تمت القراءة</button>`}
+            <button type="button" data-action="archive" data-doc="${escapeHtml(item.docId)}">أرشفة</button>
+            <button type="button" data-action="delete" data-doc="${escapeHtml(item.docId)}" class="danger-mini">حذف</button>
+          </div>
         </article>
       `).join("")}
     </div>
@@ -56,16 +67,22 @@ export async function initMessagesPage() {
     const users = await fetchParticipantUsers();
     state.cachedParticipants = users;
 
-    const messages = syncInboxMessages(data, users);
+    const messages = await syncFirebaseInboxMessages(data, users);
     const xp = buildXpProfile(data);
     const rows = buildCompetitionRows(data, users);
     const rank = getCurrentRank(rows);
+    const unread = messages.filter(item => !item.read).length;
+    const notificationPermission = getBrowserNotificationPermission();
 
     box.innerHTML = `
       <section class="inbox-summary">
         <article>
           <span>الرسائل</span>
           <strong>${messages.length}</strong>
+        </article>
+        <article>
+          <span>غير المقروء</span>
+          <strong>${unread}</strong>
         </article>
         <article>
           <span>المستوى</span>
@@ -80,8 +97,35 @@ export async function initMessagesPage() {
           <strong>${rank ? `المركز ${rank}` : "غير ظاهر"}</strong>
         </article>
       </section>
+      <section class="inbox-tools">
+        <button type="button" id="enableBrowserNotifications" ${notificationPermission === "granted" ? "disabled" : ""}>
+          ${notificationPermission === "granted" ? "إشعارات المتصفح مفعلة" : "🔔 السماح بالإشعارات"}
+        </button>
+      </section>
       ${renderInbox(messages)}
     `;
+
+    document.getElementById("enableBrowserNotifications")?.addEventListener("click", async () => {
+      await requestBrowserNotifications();
+      await initMessagesPage();
+    });
+
+    box.querySelectorAll("[data-action]").forEach(button => {
+      button.addEventListener("click", async () => {
+        const action = button.dataset.action;
+        const docId = button.dataset.doc;
+
+        try {
+          if (action === "read") await markNotificationRead(docId);
+          if (action === "archive") await archiveNotification(docId);
+          if (action === "delete") await deleteNotification(docId);
+          await renderInboxBadge();
+          await initMessagesPage();
+        } catch (err) {
+          showPop("تعذر تحديث الرسالة", "error");
+        }
+      });
+    });
   } catch (e) {
     box.innerHTML = `<div class="empty-state card">تعذر تحميل الرسائل الآن.</div>`;
     showPop("تعذر تحميل الرسائل", "error");

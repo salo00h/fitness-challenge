@@ -43,7 +43,9 @@ import {
 } from "./backup.js";
 import {
   maybeShowSmartMoment,
-  renderGamificationHub
+  renderGamificationHub,
+  renderInboxBadge,
+  syncFirebaseInboxMessages
 } from "./gamification.js";
 import {
   initMessagesPage
@@ -51,6 +53,15 @@ import {
 import {
   initHallOfFamePage
 } from "./hallOfFame.js";
+import {
+  initAchievementsPage
+} from "./achievements.js";
+import {
+  initStorePage
+} from "./store.js";
+import {
+  renderAdvancedStats
+} from "./advancedStats.js";
 import {
   deleteItemFromAdmin,
   editChallengeMeta,
@@ -108,6 +119,27 @@ async function bootstrap() {
     renderThemeToggle();
     renderSoundToggle();
     await initMessagesPage();
+    await renderInboxBadge();
+    return;
+  }
+
+  if (document.getElementById("achievementsBoard")) {
+    await ensureCurrentUser();
+    applyTheme();
+    renderThemeToggle();
+    renderSoundToggle();
+    await initAchievementsPage();
+    await renderInboxBadge();
+    return;
+  }
+
+  if (document.getElementById("storeBoard")) {
+    await ensureCurrentUser();
+    applyTheme();
+    renderThemeToggle();
+    renderSoundToggle();
+    await initStorePage();
+    await renderInboxBadge();
     return;
   }
 
@@ -123,16 +155,19 @@ async function bootstrap() {
     await renderViewer();
     renderMotivationShowcase();
     renderGamificationHub(state.cachedData, state.cachedParticipants || []);
+    await syncFirebaseInboxMessages(state.cachedData, state.cachedParticipants || []);
     maybeShowSmartMoment(state.cachedData, state.cachedParticipants || []);
   }
 
   if (document.getElementById("doneCount")) {
     const data = await getData();
     updateProgressBoard(data);
+    renderAdvancedStats(data);
     renderMotivationShowcase(data);
     bindWhatsappReport(data);
     await renderParticipantsBoard(data);
     renderGamificationHub(data, state.cachedParticipants || []);
+    await syncFirebaseInboxMessages(data, state.cachedParticipants || []);
     maybeShowSmartMoment(data, state.cachedParticipants || []);
   }
 }

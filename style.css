@@ -68,6 +68,27 @@ nav a.is-active {
   box-shadow: inset 0 0 0 1px #ffd1df;
 }
 
+nav a.has-unread {
+  position: relative;
+}
+
+nav a.has-unread:after {
+  content: attr(data-unread);
+  position: absolute;
+  top: -8px;
+  left: -6px;
+  min-width: 20px;
+  height: 20px;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  background: #ef4444;
+  color: white;
+  font-size: 11px;
+  padding: 0 5px;
+  box-shadow: 0 8px 18px rgba(239, 68, 68, .25);
+}
+
 .container {
   width: min(1100px, 92%);
   margin: 25px auto
@@ -3634,6 +3655,287 @@ textarea {
   margin-bottom: 4px;
 }
 
+.inbox-tools {
+  display: flex;
+  justify-content: flex-end;
+  margin: 0 0 16px;
+}
+
+.inbox-tools button,
+.message-actions button,
+.shop-item button,
+.wheel-info button {
+  border: 0;
+  border-radius: 999px;
+  background: linear-gradient(135deg, var(--pink), var(--pink2));
+  color: white;
+  font-weight: bold;
+  padding: 10px 14px;
+}
+
+.inbox-tools button:disabled,
+.shop-item button:disabled,
+.wheel-info button:disabled,
+.browser-card button:disabled {
+  background: #e5e7eb;
+  color: #64748b;
+}
+
+.message-item.is-new {
+  box-shadow: 0 18px 44px rgba(255, 11, 95, .12);
+  background:
+    radial-gradient(circle at top left, var(--soft), transparent 170px),
+    rgba(255, 255, 255, .97);
+}
+
+.message-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.message-actions button {
+  min-height: 36px;
+  padding: 8px 11px;
+  font-size: 12px;
+}
+
+.message-actions .danger-mini {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+.achievement-summary,
+.store-summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+.achievement-summary article,
+.store-summary article {
+  border: 1px solid var(--border);
+  border-radius: 22px;
+  background: rgba(255, 255, 255, .95);
+  box-shadow: 0 16px 36px rgba(0, 0, 0, .06);
+  padding: 18px;
+  display: grid;
+  gap: 6px;
+}
+
+.achievement-summary span,
+.store-summary span {
+  color: var(--muted);
+  font-weight: bold;
+}
+
+.achievement-summary strong,
+.store-summary strong {
+  color: var(--pink);
+  font-size: 26px;
+}
+
+.achievement-grid-full,
+.shop-grid,
+.charts-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 14px;
+}
+
+.achievement-tile,
+.shop-item,
+.chart-card,
+.wheel-panel,
+.shop-panel {
+  border: 1px solid var(--border);
+  border-radius: 24px;
+  background: rgba(255, 255, 255, .95);
+  box-shadow: 0 16px 36px rgba(0, 0, 0, .06);
+}
+
+.achievement-tile,
+.shop-item,
+.chart-card {
+  display: grid;
+  gap: 12px;
+  padding: 18px;
+}
+
+.achievement-tile {
+  opacity: .72;
+}
+
+.achievement-tile.is-unlocked {
+  opacity: 1;
+  border-color: #facc15;
+  background:
+    radial-gradient(circle at top left, #fef3c7, transparent 160px),
+    rgba(255, 255, 255, .97);
+}
+
+.achievement-tile>span,
+.shop-item>span {
+  width: 56px;
+  height: 56px;
+  display: grid;
+  place-items: center;
+  border-radius: 18px;
+  background: var(--soft);
+  font-size: 28px;
+}
+
+.achievement-tile small {
+  color: var(--pink);
+  font-weight: bold;
+}
+
+.achievement-tile h2,
+.shop-item h2,
+.chart-card h3,
+.wheel-info h2 {
+  margin: 0;
+  color: var(--text);
+}
+
+.achievement-tile p,
+.shop-item p,
+.wheel-info p {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.7;
+  font-weight: bold;
+}
+
+.achievement-progress,
+.chart-row div {
+  height: 10px;
+  border-radius: 999px;
+  background: #f1f5f9;
+  overflow: hidden;
+}
+
+.achievement-progress i,
+.chart-row i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--pink), var(--pink2));
+}
+
+.achievement-tile em {
+  color: var(--muted);
+  font-style: normal;
+  font-weight: bold;
+}
+
+.store-board,
+.achievements-board,
+.advanced-charts {
+  margin: 0 0 26px;
+}
+
+.wheel-panel,
+.shop-panel {
+  padding: 20px;
+  margin-bottom: 20px;
+}
+
+.wheel-layout {
+  display: grid;
+  grid-template-columns: 260px 1fr;
+  align-items: center;
+  gap: 24px;
+}
+
+.wheel-disc {
+  width: 240px;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  position: relative;
+  background:
+    conic-gradient(#ffe4e6, #fef3c7, #dcfce7, #dbeafe, #f3e8ff, #ffe4e6);
+  border: 10px solid white;
+  box-shadow: 0 18px 44px rgba(0, 0, 0, .12);
+}
+
+.wheel-disc.is-spun {
+  animation: wheelSettle .7s ease both;
+}
+
+.wheel-disc span {
+  position: absolute;
+  transform: rotate(calc(var(--i) * 72deg)) translateY(-86px) rotate(calc(var(--i) * -72deg));
+  font-size: 28px;
+}
+
+.wheel-disc strong {
+  width: 86px;
+  height: 86px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: white;
+  color: var(--pink);
+  font-size: 36px;
+  box-shadow: 0 14px 30px rgba(0, 0, 0, .12);
+}
+
+.wheel-info {
+  display: grid;
+  gap: 12px;
+}
+
+.shop-item.is-unlocked {
+  border-color: #22c55e;
+  background:
+    radial-gradient(circle at top left, #dcfce7, transparent 155px),
+    rgba(255, 255, 255, .97);
+}
+
+.shop-item strong {
+  color: var(--pink);
+  font-size: 22px;
+}
+
+.chart-card h3 {
+  font-size: 20px;
+}
+
+.chart-row {
+  display: grid;
+  grid-template-columns: 92px 1fr 58px;
+  align-items: center;
+  gap: 10px;
+}
+
+.chart-row span,
+.chart-row strong {
+  color: var(--muted);
+  font-weight: bold;
+  font-size: 13px;
+}
+
+.chart-row strong {
+  color: var(--pink);
+  text-align: left;
+}
+
+@keyframes wheelSettle {
+  from {
+    transform: rotate(0deg) scale(.96);
+  }
+
+  to {
+    transform: rotate(720deg) scale(1);
+  }
+}
+
 :root[data-theme="rose"] {
   --pink: #e11d48;
   --pink2: #fb7185;
@@ -3757,7 +4059,21 @@ textarea {
 :root[data-theme="dark"] .fame-card,
 :root[data-theme="night"] .fame-card,
 :root[data-theme="dark"] .fame-ranking,
-:root[data-theme="night"] .fame-ranking {
+:root[data-theme="night"] .fame-ranking,
+:root[data-theme="dark"] .achievement-summary article,
+:root[data-theme="night"] .achievement-summary article,
+:root[data-theme="dark"] .store-summary article,
+:root[data-theme="night"] .store-summary article,
+:root[data-theme="dark"] .achievement-tile,
+:root[data-theme="night"] .achievement-tile,
+:root[data-theme="dark"] .shop-item,
+:root[data-theme="night"] .shop-item,
+:root[data-theme="dark"] .chart-card,
+:root[data-theme="night"] .chart-card,
+:root[data-theme="dark"] .wheel-panel,
+:root[data-theme="night"] .wheel-panel,
+:root[data-theme="dark"] .shop-panel,
+:root[data-theme="night"] .shop-panel {
   background: #111827;
   border-color: var(--border);
 }
@@ -3773,7 +4089,11 @@ textarea {
 :root[data-theme="dark"] .calendar-day.is-pending,
 :root[data-theme="night"] .calendar-day.is-pending,
 :root[data-theme="dark"] .level-bar,
-:root[data-theme="night"] .level-bar {
+:root[data-theme="night"] .level-bar,
+:root[data-theme="dark"] .achievement-progress,
+:root[data-theme="night"] .achievement-progress,
+:root[data-theme="dark"] .chart-row div,
+:root[data-theme="night"] .chart-row div {
   background: #1f2937;
 }
 
@@ -3866,7 +4186,12 @@ textarea {
 
   .game-grid,
   .inbox-summary,
-  .fame-grid {
+  .fame-grid,
+  .achievement-summary,
+  .store-summary,
+  .achievement-grid-full,
+  .shop-grid,
+  .charts-grid {
     grid-template-columns: 1fr;
   }
 
@@ -3885,5 +4210,18 @@ textarea {
 
   .fame-list article {
     grid-template-columns: 38px 44px 1fr;
+  }
+
+  .wheel-layout {
+    grid-template-columns: 1fr;
+    justify-items: center;
+  }
+
+  .wheel-disc {
+    width: min(240px, 78vw);
+  }
+
+  .chart-row {
+    grid-template-columns: 78px 1fr 48px;
   }
 }
