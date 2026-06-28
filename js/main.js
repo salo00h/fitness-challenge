@@ -2,13 +2,16 @@ import { ensureAdminAccess } from "./adminLock.js";
 import { ensureCurrentUser } from "./auth.js";
 import { getData } from "./challengeMeta.js";
 import { debugChallengeLock } from "./challengeMeta.js";
+import { state } from "./state.js";
 import {
   applyTheme,
   closeCertificate,
   renderActiveNav,
   renderDailyQuote,
   renderMotivationShowcase,
+  renderSoundToggle,
   renderThemeToggle,
+  toggleSoundMuted,
   toggleTheme
 } from "./ui.js";
 import {
@@ -39,6 +42,16 @@ import {
   initBackupExport
 } from "./backup.js";
 import {
+  maybeShowSmartMoment,
+  renderGamificationHub
+} from "./gamification.js";
+import {
+  initMessagesPage
+} from "./messages.js";
+import {
+  initHallOfFamePage
+} from "./hallOfFame.js";
+import {
   deleteItemFromAdmin,
   editChallengeMeta,
   editItem,
@@ -58,12 +71,14 @@ window.editChallengeMeta = editChallengeMeta;
 window.completeProgramDay = completeProgramDay;
 window.resetParticipantPassword = resetParticipantPassword;
 window.toggleTheme = toggleTheme;
+window.toggleSoundMuted = toggleSoundMuted;
 window.closeCertificate = closeCertificate;
 window.debugChallengeLock = debugChallengeLock;
 
 async function bootstrap() {
   applyTheme();
   renderThemeToggle();
+  renderSoundToggle();
   renderActiveNav();
 
   if (document.getElementById("exerciseForm")) {
@@ -82,16 +97,33 @@ async function bootstrap() {
     return;
   }
 
+  if (document.getElementById("hallPageBoard")) {
+    await initHallOfFamePage();
+    return;
+  }
+
+  if (document.getElementById("messagesBoard")) {
+    await ensureCurrentUser();
+    applyTheme();
+    renderThemeToggle();
+    renderSoundToggle();
+    await initMessagesPage();
+    return;
+  }
+
   if (document.getElementById("days") || document.getElementById("doneCount")) {
     renderDailyQuote();
     await ensureCurrentUser();
     applyTheme();
     renderThemeToggle();
+    renderSoundToggle();
   }
 
   if (document.getElementById("days")) {
     await renderViewer();
     renderMotivationShowcase();
+    renderGamificationHub(state.cachedData, state.cachedParticipants || []);
+    maybeShowSmartMoment(state.cachedData, state.cachedParticipants || []);
   }
 
   if (document.getElementById("doneCount")) {
@@ -100,6 +132,8 @@ async function bootstrap() {
     renderMotivationShowcase(data);
     bindWhatsappReport(data);
     await renderParticipantsBoard(data);
+    renderGamificationHub(data, state.cachedParticipants || []);
+    maybeShowSmartMoment(data, state.cachedParticipants || []);
   }
 }
 

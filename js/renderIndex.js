@@ -31,9 +31,12 @@ import {
   renderSkeletonCards,
   showChallengeCertificate,
   showMomentPop,
-  showPop,
-  strongConfetti
+  showPop
 } from "./ui.js";
+import {
+  celebrateWeekCompletion,
+  renderGamificationHub
+} from "./gamification.js";
 import {
   dayName,
   escapeHtml,
@@ -237,7 +240,12 @@ function maybeCelebrateMilestones(data, item, done) {
     const key = celebrationKey("week", challenge, week);
     if (!localStorage.getItem(key)) {
       localStorage.setItem(key, "yes");
-      setTimeout(strongConfetti, 180);
+      setTimeout(() => {
+        celebrateWeekCompletion(
+          `اكتمل ${weekName(week)}`,
+          `مبروك! تم فتح وسام بطلة ${weekName(week)} داخل ${challengeName(challenge)}.`
+        );
+      }, 180);
       showPop(`🏆 اكتمل ${weekName(week)} من ${challengeName(challenge)}`);
     }
   }
@@ -310,6 +318,7 @@ export async function completeProgramDay(challenge, week, programDay) {
     refreshParticipants: true,
     showLoading: false
   });
+  renderGamificationHub(allData, state.cachedParticipants || []);
 
   window.scrollTo({
     top: scrollY,
@@ -362,6 +371,7 @@ export async function toggleDone(id) {
     refreshParticipants: true,
     showLoading: false
   });
+  renderGamificationHub(allData, state.cachedParticipants || []);
 
   window.scrollTo({
     top: scrollY,

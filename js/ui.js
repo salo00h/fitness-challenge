@@ -4,25 +4,64 @@ import { challengeName } from "./challengeMeta.js";
 import { getMissionItemsForChallenge, getTodayAbsoluteDay, isFutureProgramDayItems } from "./commitment.js";
 import { escapeHtml, getProgressTitle, isDone, startOfDay, userDocId } from "./utils.js";
 
+const THEME_OPTIONS = ["light", "dark", "rose", "purple", "ocean", "gold", "night"];
+const SOUND_KEY = "fitness_sound_muted_v1";
+
 export function themeStorageKey() {
   return state.currentUser ? `${THEME_KEY}_${userDocId(state.currentUser)}` : THEME_KEY;
 }
 
 export function getStoredTheme() {
-  return localStorage.getItem(themeStorageKey()) || localStorage.getItem(THEME_KEY) || "light";
+  const stored = localStorage.getItem(themeStorageKey()) || localStorage.getItem(THEME_KEY) || "light";
+  return THEME_OPTIONS.includes(stored) ? stored : "light";
 }
 
 export function applyTheme(theme = getStoredTheme()) {
-  const value = theme === "dark" ? "dark" : "light";
+  const value = THEME_OPTIONS.includes(theme) ? theme : "light";
   document.documentElement.dataset.theme = value;
   localStorage.setItem(themeStorageKey(), value);
   if (!state.currentUser) localStorage.setItem(THEME_KEY, value);
 }
 
 export function toggleTheme() {
-  const next = getStoredTheme() === "dark" ? "light" : "dark";
+  const current = getStoredTheme();
+  const next = current === "dark" || current === "night" ? "light" : "dark";
   applyTheme(next);
   renderThemeToggle();
+}
+
+export function getThemeOptions() {
+  return [
+    { value: "light", label: "نهاري", icon: "☀️" },
+    { value: "rose", label: "وردي", icon: "🌸" },
+    { value: "purple", label: "بنفسجي", icon: "💜" },
+    { value: "ocean", label: "أزرق", icon: "🌊" },
+    { value: "gold", label: "ذهبي", icon: "⭐" },
+    { value: "night", label: "ليلي", icon: "🌙" },
+    { value: "dark", label: "داكن", icon: "🌑" }
+  ];
+}
+
+export function selectTheme(theme) {
+  applyTheme(theme);
+  renderThemeToggle();
+}
+
+function soundStorageKey() {
+  return state.currentUser ? `${SOUND_KEY}_${userDocId(state.currentUser)}` : SOUND_KEY;
+}
+
+export function isSoundMuted() {
+  return localStorage.getItem(soundStorageKey()) === "yes";
+}
+
+export function setSoundMuted(muted) {
+  localStorage.setItem(soundStorageKey(), muted ? "yes" : "no");
+}
+
+export function toggleSoundMuted() {
+  setSoundMuted(!isSoundMuted());
+  renderSoundToggle();
 }
 
 export function renderThemeToggle() {
@@ -39,7 +78,25 @@ export function renderThemeToggle() {
     topbar.appendChild(button);
   }
 
-  button.textContent = getStoredTheme() === "dark" ? "☀️ نهاري" : "🌙 ليلي";
+  const current = getThemeOptions().find(item => item.value === getStoredTheme()) || getThemeOptions()[0];
+  button.textContent = `${current.icon} ${current.label}`;
+}
+
+export function renderSoundToggle() {
+  const topbar = document.querySelector(".topbar");
+  if (!topbar) return;
+
+  let button = document.getElementById("soundToggle");
+  if (!button) {
+    button = document.createElement("button");
+    button.id = "soundToggle";
+    button.type = "button";
+    button.className = "sound-toggle";
+    button.onclick = toggleSoundMuted;
+    topbar.appendChild(button);
+  }
+
+  button.textContent = isSoundMuted() ? "🔇 صوت مكتوم" : "🔔 صوت يعمل";
 }
 
 export function renderActiveNav() {
@@ -261,6 +318,8 @@ export function setProgress(idPercent, idBar, percent) {
 }
 
 export function playDing() {
+  if (isSoundMuted()) return;
+
   try {
     const ctx = new (window.AudioContext || window.webkitAudioContext)();
     const osc = ctx.createOscillator();
@@ -278,6 +337,31 @@ export function playDing() {
     gain.connect(ctx.destination);
     osc.start();
     osc.stop(ctx.currentTime + 0.25);
+  } catch (e) { }
+}
+
+export function playSuccessSound() {
+  if (isSoundMuted()) return;
+
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const gain = ctx.createGain();
+    const notes = [660, 880, 1175];
+
+    gain.gain.setValueAtTime(0.001, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.2, ctx.currentTime + 0.03);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.58);
+    gain.connect(ctx.destination);
+
+    notes.forEach((frequency, index) => {
+      const osc = ctx.createOscillator();
+      const start = ctx.currentTime + (index * 0.12);
+      osc.type = "triangle";
+      osc.frequency.setValueAtTime(frequency, start);
+      osc.connect(gain);
+      osc.start(start);
+      osc.stop(start + 0.18);
+    });
   } catch (e) { }
 }
 
@@ -308,6 +392,7 @@ export function closeCertificate() {
 export function showChallengeCertificate(challenge) {
   closeCertificate();
   strongConfetti();
+  playSuccessSound();
 
   const overlay = document.createElement("div");
   overlay.id = "certificateOverlay";
