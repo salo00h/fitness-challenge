@@ -42,6 +42,19 @@ export function renderThemeToggle() {
   button.textContent = getStoredTheme() === "dark" ? "☀️ نهاري" : "🌙 ليلي";
 }
 
+export function renderActiveNav() {
+  const current = (location.pathname.split("/").pop() || "index.html").toLowerCase();
+
+  document.querySelectorAll(".topbar nav a").forEach(link => {
+    const target = (link.getAttribute("href") || "").split("/").pop().toLowerCase();
+    const active = target === current || (!current && target === "index.html");
+
+    link.classList.toggle("is-active", active);
+    if (active) link.setAttribute("aria-current", "page");
+    else link.removeAttribute("aria-current");
+  });
+}
+
 export function getDefaultAvatar(name = "") {
   const normalized = String(name || "").trim().replace(/\s+/g, " ");
   const index = [...normalized].reduce((sum, char) => sum + char.charCodeAt(0), 0) % AVATARS.length;
@@ -179,6 +192,13 @@ export function setProgress(idPercent, idBar, percent) {
       card.prepend(ring);
     }
     card.classList.toggle("is-glowing", idPercent === "commitmentPercent" && Number(percent) >= 90);
+
+    if (idPercent === "commitmentPercent") {
+      const value = Number(percent) || 0;
+      card.classList.toggle("is-high", value >= 90);
+      card.classList.toggle("is-medium", value >= 70 && value < 90);
+      card.classList.toggle("is-low", value < 70);
+    }
   }
 
   const heroRing = p?.closest(".hero-ring");

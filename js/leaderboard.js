@@ -36,6 +36,13 @@ function rankLabel(index) {
   return `المركز ${index + 1}`;
 }
 
+function rankTone(index) {
+  if (index === 0) return "is-gold";
+  if (index === 1) return "is-silver";
+  if (index === 2) return "is-bronze";
+  return "";
+}
+
 function renderSummary(rows) {
   const participants = rows.length;
   const avgCommitment = participants
@@ -56,20 +63,49 @@ function renderSummary(rows) {
   `;
 }
 
-function renderRows(rows) {
-  if (rows.length === 0) {
-    return `<div class="empty card">لا توجد مشاركات حتى الآن.</div>`;
-  }
+function renderPodium(rows) {
+  if (rows.length === 0) return "";
 
   return `
-    <div class="leaderboard-list">
+    <div class="leaderboard-podium">
       ${rows.map((row, index) => {
     const name = normalizeUserName(row.user.name);
     const avatar = getUserAvatar(row.user);
     const stats = row.stats;
 
     return `
-        <article class="leaderboard-row">
+        <article class="podium-card ${rankTone(index)}">
+          <div class="podium-rank">${rankLabel(index)}</div>
+          <span class="podium-avatar">${escapeHtml(avatar)}</span>
+          <strong>${escapeHtml(name)}</strong>
+          <small>${escapeHtml(stats.title)}</small>
+          <div class="podium-score">${stats.commitment}% التزام</div>
+          <div class="podium-meta">
+            <span>إنجاز ${stats.percent}%</span>
+            <span>Streak ${stats.streak}</span>
+            <span>${stats.minutes} دقيقة</span>
+            <span>${stats.completedWeeks} أسابيع</span>
+          </div>
+        </article>
+      `;
+  }).join("")}
+    </div>
+  `;
+}
+
+function renderRows(rows, startIndex = 0) {
+  if (rows.length === 0) return "";
+
+  return `
+    <div class="leaderboard-list">
+      ${rows.map((row, offset) => {
+    const index = startIndex + offset;
+    const name = normalizeUserName(row.user.name);
+    const avatar = getUserAvatar(row.user);
+    const stats = row.stats;
+
+    return `
+        <article class="leaderboard-row ${rankTone(index)}">
           <div class="leaderboard-rank">${rankLabel(index)}</div>
           <div class="leaderboard-person">
             <span class="leaderboard-avatar">${escapeHtml(avatar)}</span>
@@ -94,6 +130,17 @@ function renderRows(rows) {
   `;
 }
 
+function renderLeaderboard(rows) {
+  if (rows.length === 0) {
+    return `<div class="empty card">لا توجد مشاركات حتى الآن.</div>`;
+  }
+
+  return `
+    ${renderPodium(rows.slice(0, 3))}
+    ${renderRows(rows.slice(3), 3)}
+  `;
+}
+
 export async function initLeaderboardPage() {
   const box = document.getElementById("leaderboardBoard");
   if (!box) return;
@@ -107,7 +154,7 @@ export async function initLeaderboardPage() {
 
     box.innerHTML = `
       ${renderSummary(rows)}
-      ${renderRows(rows)}
+      ${renderLeaderboard(rows)}
     `;
   } catch (e) {
     box.innerHTML = `<div class="empty card">تعذر تحميل لوحة الترتيب الآن.</div>`;

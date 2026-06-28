@@ -43,11 +43,29 @@ body {
   font-size: 22px
 }
 
+nav {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
 nav a {
   color: var(--text);
   text-decoration: none;
-  margin-inline: 10px;
-  font-weight: bold
+  margin-inline: 0;
+  font-weight: bold;
+  border-radius: 999px;
+  padding: 8px 11px;
+  transition: background .2s ease, color .2s ease, box-shadow .2s ease;
+}
+
+nav a:hover,
+nav a.is-active {
+  color: var(--pink);
+  background: var(--soft);
+  box-shadow: inset 0 0 0 1px #ffd1df;
 }
 
 .container {
@@ -584,6 +602,36 @@ button:hover {
 .day-card.is-locked {
   background: linear-gradient(180deg, #fff, #f8f8f8);
   border-color: #e5e7eb;
+}
+
+.day-card.is-complete {
+  background: linear-gradient(180deg, #fff, #f0fff6);
+  border-color: #bbf7d0;
+  box-shadow: 0 14px 32px rgba(22, 163, 74, .10);
+}
+
+.day-card.is-today {
+  border-color: var(--pink);
+  box-shadow:
+    0 14px 34px rgba(255, 11, 95, .14),
+    inset 0 0 0 2px rgba(255, 11, 95, .12);
+}
+
+.day-card.is-today .day-head h2:after {
+  content: "اليوم";
+  display: inline-flex;
+  margin-inline-start: 8px;
+  color: white;
+  background: var(--pink);
+  border-radius: 999px;
+  padding: 4px 9px;
+  font-size: 12px;
+  vertical-align: middle;
+}
+
+.day-card.is-rest {
+  background: linear-gradient(180deg, #fff, #f7fbff);
+  border-color: #bfdbfe;
 }
 
 .day-card.is-highlighted,
@@ -1294,6 +1342,33 @@ textarea {
   border-color: #ffd1df;
 }
 
+.progress-card.commitment.is-high {
+  border-color: #86efac;
+  background: linear-gradient(135deg, #fff, #f0fff6);
+}
+
+.progress-card.commitment.is-high strong {
+  color: var(--green);
+}
+
+.progress-card.commitment.is-medium {
+  border-color: #fde68a;
+  background: linear-gradient(135deg, #fff, #fffbeb);
+}
+
+.progress-card.commitment.is-medium strong {
+  color: #b45309;
+}
+
+.progress-card.commitment.is-low {
+  border-color: #fecaca;
+  background: linear-gradient(135deg, #fff, #fff1f2);
+}
+
+.progress-card.commitment.is-low strong {
+  color: #dc2626;
+}
+
 .kpi-card {
   min-height: 125px;
   border-radius: 26px;
@@ -1964,6 +2039,112 @@ textarea {
   margin-top: 6px;
 }
 
+.leaderboard-podium {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.podium-card {
+  min-height: 260px;
+  display: grid;
+  justify-items: center;
+  align-content: start;
+  gap: 10px;
+  background: white;
+  border: 1px solid var(--border);
+  border-radius: 24px;
+  padding: 18px;
+  text-align: center;
+  box-shadow: 0 16px 36px rgba(0, 0, 0, .07);
+  position: relative;
+  overflow: hidden;
+}
+
+.podium-card:before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  opacity: .55;
+  pointer-events: none;
+}
+
+.podium-card>* {
+  position: relative;
+  z-index: 1;
+}
+
+.podium-card.is-gold:before {
+  background: linear-gradient(135deg, #fff7d6, transparent 65%);
+}
+
+.podium-card.is-silver:before {
+  background: linear-gradient(135deg, #eef2ff, transparent 65%);
+}
+
+.podium-card.is-bronze:before {
+  background: linear-gradient(135deg, #ffe8d4, transparent 65%);
+}
+
+.podium-rank,
+.podium-score {
+  border-radius: 999px;
+  padding: 7px 12px;
+  font-weight: bold;
+}
+
+.podium-rank {
+  color: #92400e;
+  background: #fff7d6;
+  border: 1px solid #fde68a;
+}
+
+.podium-avatar {
+  width: 72px;
+  height: 72px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: var(--soft);
+  border: 1px solid #ffd1df;
+  font-size: 38px;
+}
+
+.podium-card strong {
+  color: var(--text);
+  font-size: 24px;
+  overflow-wrap: anywhere;
+}
+
+.podium-card small {
+  color: var(--pink);
+  font-weight: bold;
+}
+
+.podium-score {
+  color: var(--green);
+  background: var(--green-soft);
+}
+
+.podium-meta {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.podium-meta span {
+  background: #fafafa;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 8px;
+  color: var(--muted);
+  font-weight: bold;
+  font-size: 12px;
+}
+
 .leaderboard-list {
   display: grid;
   gap: 12px;
@@ -1990,6 +2171,30 @@ textarea {
   text-align: center;
   font-weight: bold;
   font-size: 13px;
+}
+
+.current-rank-summary {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 12px;
+  align-items: center;
+  margin: 0 0 14px;
+  padding: 14px 16px;
+  border: 1px solid #ffd1df;
+  border-radius: 20px;
+  background: linear-gradient(135deg, #fff, #fff5f8);
+  box-shadow: 0 12px 28px rgba(255, 11, 95, .08);
+}
+
+.current-rank-summary span,
+.current-rank-summary small {
+  color: var(--muted);
+  font-weight: bold;
+}
+
+.current-rank-summary strong {
+  color: var(--pink);
+  font-size: 22px;
 }
 
 .leaderboard-person {
@@ -2074,7 +2279,58 @@ textarea {
   line-height: 1.7;
 }
 
+.admin-exercises-list {
+  margin-top: 18px;
+}
+
+.admin-exercises-list h2 {
+  margin: 0 0 14px;
+}
+
+.admin-tabs {
+  position: sticky;
+  top: 66px;
+  z-index: 8;
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin: 0 0 18px;
+  padding: 12px;
+  border: 1px solid #ffd1df;
+  border-radius: 22px;
+  background: rgba(255, 255, 255, .92);
+  box-shadow: 0 12px 30px rgba(255, 11, 95, .08);
+  backdrop-filter: blur(10px);
+}
+
+.admin-tabs button {
+  margin: 0;
+  flex: 1 1 150px;
+  background: #f8fafc;
+  color: var(--text);
+  border: 1px solid var(--border);
+  box-shadow: none;
+}
+
+.admin-tabs button.is-active {
+  color: white;
+  background: linear-gradient(135deg, var(--pink), var(--pink2));
+  border-color: transparent;
+}
+
+.admin-tab-panel {
+  display: none;
+}
+
+.admin-tab-panel.is-active {
+  display: block;
+}
+
 @media(max-width:1050px) {
+  .leaderboard-podium {
+    grid-template-columns: 1fr;
+  }
+
   .leaderboard-row {
     grid-template-columns: 110px minmax(210px, 1fr) minmax(180px, 1fr);
   }
@@ -2095,6 +2351,15 @@ textarea {
 
   .leaderboard-rank {
     width: fit-content;
+  }
+
+  .current-rank-summary {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-tabs {
+    position: static;
+    grid-template-columns: 1fr;
   }
 }
 
@@ -2779,8 +3044,11 @@ textarea {
 :root[data-theme="dark"] .calendar-card,
 :root[data-theme="dark"] .hall-card,
 :root[data-theme="dark"] .leaderboard-summary div,
+:root[data-theme="dark"] .podium-card,
 :root[data-theme="dark"] .leaderboard-row,
 :root[data-theme="dark"] .admin-tool-panel,
+:root[data-theme="dark"] .current-rank-summary,
+:root[data-theme="dark"] .admin-tabs,
 :root[data-theme="dark"] .login-card {
   background: #111827;
   border-color: var(--border);
@@ -2800,9 +3068,21 @@ textarea {
 :root[data-theme="dark"] .avatar-pick,
 :root[data-theme="dark"] .today-mission-item,
 :root[data-theme="dark"] .leaderboard-stat,
+:root[data-theme="dark"] .podium-meta span,
+:root[data-theme="dark"] .admin-tabs button,
 :root[data-theme="dark"] .calendar-empty {
   background: #172033;
   border-color: var(--border);
+}
+
+:root[data-theme="dark"] .day-card.is-complete {
+  background: linear-gradient(180deg, #111827, #10251b);
+  border-color: rgba(34, 197, 94, .45);
+}
+
+:root[data-theme="dark"] .day-card.is-rest {
+  background: linear-gradient(180deg, #111827, #13233a);
+  border-color: rgba(96, 165, 250, .45);
 }
 
 :root[data-theme="dark"] .challenge-week-nav,

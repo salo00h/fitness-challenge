@@ -5,6 +5,7 @@ import { debugChallengeLock } from "./challengeMeta.js";
 import {
   applyTheme,
   closeCertificate,
+  renderActiveNav,
   renderDailyQuote,
   renderThemeToggle,
   toggleTheme
@@ -41,6 +42,7 @@ import {
   editChallengeMeta,
   editItem,
   initAdmin,
+  initAdminTabs,
   resetParticipantPassword
 } from "./renderAdmin.js";
 
@@ -61,10 +63,12 @@ window.debugChallengeLock = debugChallengeLock;
 async function bootstrap() {
   applyTheme();
   renderThemeToggle();
+  renderActiveNav();
 
   if (document.getElementById("exerciseForm")) {
     const hasAccess = await ensureAdminAccess();
     if (hasAccess) {
+      initAdminTabs();
       await initAdmin();
       initAdminReports();
       initBackupExport();

@@ -119,8 +119,20 @@ export async function renderParticipantsBoard(data, options = {}) {
     return;
   }
 
+  const currentRankIndex = visibleUsers.findIndex(item => item.isMe);
+  const currentRankSummary = document.body.classList.contains("stats-page") && currentRankIndex >= 0
+    ? `
+        <div class="current-rank-summary">
+          <span>ترتيبك الحالي</span>
+          <strong>${participantRankLabel(currentRankIndex)}</strong>
+          <small>حسب الالتزام ثم الإنجاز ثم السلسلة ثم الدقائق</small>
+        </div>
+      `
+    : "";
+
   board.innerHTML = `
     <h2>👭 تحدي البنات</h2>
+    ${currentRankSummary}
     <div class="participants-grid">
       ${visibleUsers.map(({ user, stats, isMe }, index) => {
     const badges = getUserBadges(stats, index);

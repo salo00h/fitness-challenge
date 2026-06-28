@@ -468,6 +468,7 @@ export async function renderViewer(options = {}) {
             const restItem = items[0];
             const dayLocked = isFutureProgramDayItems(items);
             const dayComplete = items.every(item => isDone(done[item.id]));
+            const dayToday = getProgramAbsoluteDay(items[0]) === getTodayAbsoluteDay(challenge);
             const dayCompleteButton = dayLocked
               ? ""
               : `<button type="button" class="day-complete-btn ${dayComplete ? "is-done" : ""}" ${dayComplete ? "disabled" : ""} onclick="completeProgramDay(${challenge}, ${selectedWeek}, ${day})">
@@ -475,7 +476,7 @@ export async function renderViewer(options = {}) {
                 </button>`;
 
             return `
-                      <article class="day-card ${dayLocked ? "is-locked" : ""} ${dayComplete ? "is-complete" : ""}" data-program-day="${day}">
+                      <article class="day-card ${dayLocked ? "is-locked" : ""} ${dayComplete ? "is-complete" : ""} ${allRest ? "is-rest" : ""} ${dayToday ? "is-today" : ""}" data-program-day="${day}">
                         <div class="day-head">
                           <div>
                             <h2>${dayName(day)}</h2>

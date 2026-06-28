@@ -25,7 +25,15 @@
       <p>النجاح يبدأ بخطوة، ابدأ التحدي الآن. 💪🔥</p>
     </section>
 
-    <section class="card form challenge-settings">
+    <section class="admin-tabs" aria-label="أقسام الإدارة">
+      <button type="button" class="is-active" data-admin-tab="challenge">إعدادات التحدي</button>
+      <button type="button" data-admin-tab="participants">المشاركات</button>
+      <button type="button" data-admin-tab="reports">التقرير الإداري</button>
+      <button type="button" data-admin-tab="backup">النسخ الاحتياطي</button>
+      <button type="button" data-admin-tab="exercises">التمارين</button>
+    </section>
+
+    <section class="card form challenge-settings admin-tab-panel is-active" data-admin-panel="challenge">
       <h2>إعدادات التحديات</h2>
       <form id="challengeMetaForm">
         <div class="grid2">
@@ -87,12 +95,12 @@
       <div id="challengeMetaList" class="challenge-meta-list"></div>
     </section>
 
-    <section class="card admin-participants-panel">
+    <section class="card admin-participants-panel admin-tab-panel" data-admin-panel="participants">
       <h2>إدارة المشاركات</h2>
       <div id="adminParticipantsBoard" class="admin-participants-list"></div>
     </section>
 
-    <section id="adminReportsPanel" class="card admin-tool-panel">
+    <section id="adminReportsPanel" class="card admin-tool-panel admin-tab-panel" data-admin-panel="reports">
       <h2>التقرير الإداري</h2>
       <p class="admin-tool-note">التقارير تُبنى من بيانات Firebase الحالية عند الضغط.</p>
       <div class="actions">
@@ -101,7 +109,7 @@
       </div>
     </section>
 
-    <section id="backupExportPanel" class="card admin-tool-panel">
+    <section id="backupExportPanel" class="card admin-tool-panel admin-tab-panel" data-admin-panel="backup">
       <h2>النسخ الاحتياطي</h2>
       <p class="admin-tool-note">تصدير JSON فقط، بدون استيراد أو تعديل للبيانات.</p>
       <div class="actions">
@@ -111,7 +119,7 @@
       </div>
     </section>
 
-    <form id="exerciseForm" class="card form">
+    <form id="exerciseForm" class="card form admin-tab-panel" data-admin-panel="exercises">
       <input type="hidden" id="editId" />
 
       <label>اسم التمرين</label>
@@ -189,8 +197,10 @@
       </div>
     </form>
 
-    <h2>التمارين المضافة</h2>
-    <section id="adminList" class="admin-list"></section>
+    <section class="admin-exercises-list admin-tab-panel" data-admin-panel="exercises">
+      <h2>التمارين المضافة</h2>
+      <section id="adminList" class="admin-list"></section>
+    </section>
   </main>
 
   <script type="module" src="js/main.js"></script>

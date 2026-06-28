@@ -163,11 +163,37 @@ function renderChallengeMetaList() {
 }
 
 export function editChallengeMeta(challenge) {
+  setAdminTab("challenge");
   populateChallengeMetaOptions();
   fillChallengeMetaForm(challenge);
 
   const box = document.querySelector(".challenge-settings");
   if (box) box.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+export function setAdminTab(tab) {
+  const value = String(tab || "challenge");
+
+  document.querySelectorAll("[data-admin-tab]").forEach(button => {
+    const active = button.dataset.adminTab === value;
+    button.classList.toggle("is-active", active);
+    button.setAttribute("aria-selected", active ? "true" : "false");
+  });
+
+  document.querySelectorAll("[data-admin-panel]").forEach(panel => {
+    panel.classList.toggle("is-active", panel.dataset.adminPanel === value);
+  });
+}
+
+export function initAdminTabs() {
+  const tabs = document.querySelectorAll("[data-admin-tab]");
+  if (!tabs.length) return;
+
+  tabs.forEach(button => {
+    button.addEventListener("click", () => setAdminTab(button.dataset.adminTab));
+  });
+
+  setAdminTab(document.querySelector("[data-admin-tab].is-active")?.dataset.adminTab || "challenge");
 }
 
 // Admin
@@ -402,6 +428,7 @@ export async function resetParticipantPassword(name) {
 }
 
 export function editItem(id) {
+  setAdminTab("exercises");
   const item = state.cachedData.find(x => x.id === id);
   if (!item) return;
 
