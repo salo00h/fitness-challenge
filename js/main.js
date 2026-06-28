@@ -28,6 +28,15 @@ import {
   renderParticipantsBoard
 } from "./participants.js";
 import {
+  initLeaderboardPage
+} from "./leaderboard.js";
+import {
+  initAdminReports
+} from "./adminReports.js";
+import {
+  initBackupExport
+} from "./backup.js";
+import {
   deleteItemFromAdmin,
   editChallengeMeta,
   editItem,
@@ -55,7 +64,16 @@ async function bootstrap() {
 
   if (document.getElementById("exerciseForm")) {
     const hasAccess = await ensureAdminAccess();
-    if (hasAccess) await initAdmin();
+    if (hasAccess) {
+      await initAdmin();
+      initAdminReports();
+      initBackupExport();
+    }
+    return;
+  }
+
+  if (document.getElementById("leaderboardBoard")) {
+    await initLeaderboardPage();
     return;
   }
 

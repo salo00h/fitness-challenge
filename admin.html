@@ -14,6 +14,7 @@
     <nav>
       <a href="index.html">العرض</a>
       <a href="stats.html">الإحصائيات</a>
+      <a href="leaderboard.html">لوحة الترتيب</a>
       <a href="admin.html">الإعدادات</a>
     </nav>
   </header>
@@ -89,6 +90,25 @@
     <section class="card admin-participants-panel">
       <h2>إدارة المشاركات</h2>
       <div id="adminParticipantsBoard" class="admin-participants-list"></div>
+    </section>
+
+    <section id="adminReportsPanel" class="card admin-tool-panel">
+      <h2>التقرير الإداري</h2>
+      <p class="admin-tool-note">التقارير تُبنى من بيانات Firebase الحالية عند الضغط.</p>
+      <div class="actions">
+        <button type="button" id="copyDailyAdminReport">نسخ تقرير اليوم</button>
+        <button type="button" id="copyWeeklyAdminReport" class="ghost">نسخ تقرير الأسبوع</button>
+      </div>
+    </section>
+
+    <section id="backupExportPanel" class="card admin-tool-panel">
+      <h2>النسخ الاحتياطي</h2>
+      <p class="admin-tool-note">تصدير JSON فقط، بدون استيراد أو تعديل للبيانات.</p>
+      <div class="actions">
+        <button type="button" id="exportExercisesJson">تصدير التمارين JSON</button>
+        <button type="button" id="exportParticipantsJson" class="ghost">تصدير المشاركات JSON</button>
+        <button type="button" id="exportFullBackupJson" class="ghost">تصدير نسخة كاملة JSON</button>
+      </div>
     </section>
 
     <form id="exerciseForm" class="card form">

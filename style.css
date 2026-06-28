@@ -1916,6 +1916,188 @@ textarea {
   }
 }
 
+.leaderboard-dashboard {
+  display: grid;
+  gap: 18px;
+}
+
+.leaderboard-hero {
+  margin-bottom: 0;
+}
+
+.leaderboard-board {
+  display: grid;
+  gap: 16px;
+}
+
+.leaderboard-summary {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.leaderboard-summary div,
+.admin-tool-panel {
+  background: white;
+  border: 1px solid var(--border);
+  border-radius: 22px;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, .06);
+}
+
+.leaderboard-summary div {
+  padding: 16px;
+}
+
+.leaderboard-summary span,
+.leaderboard-stat span,
+.leaderboard-meter span,
+.admin-tool-note {
+  display: block;
+  color: var(--muted);
+  font-weight: bold;
+}
+
+.leaderboard-summary strong {
+  display: block;
+  color: var(--pink);
+  font-size: 30px;
+  margin-top: 6px;
+}
+
+.leaderboard-list {
+  display: grid;
+  gap: 12px;
+}
+
+.leaderboard-row {
+  display: grid;
+  grid-template-columns: 120px minmax(190px, 1.2fr) minmax(180px, 1fr) repeat(4, minmax(92px, .55fr));
+  gap: 12px;
+  align-items: center;
+  background: white;
+  border: 1px solid var(--border);
+  border-radius: 22px;
+  padding: 14px;
+  box-shadow: 0 10px 26px rgba(0, 0, 0, .05);
+}
+
+.leaderboard-rank {
+  color: var(--pink);
+  background: #fff0f6;
+  border: 1px solid #ffd1df;
+  border-radius: 999px;
+  padding: 8px 10px;
+  text-align: center;
+  font-weight: bold;
+  font-size: 13px;
+}
+
+.leaderboard-person {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.leaderboard-avatar {
+  width: 46px;
+  height: 46px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 46px;
+  border-radius: 50%;
+  background: var(--soft);
+  border: 1px solid #ffd1df;
+  font-size: 24px;
+}
+
+.leaderboard-person strong,
+.leaderboard-person small {
+  display: block;
+}
+
+.leaderboard-person strong {
+  color: var(--text);
+  font-size: 20px;
+  overflow-wrap: anywhere;
+}
+
+.leaderboard-person small {
+  color: var(--pink);
+  font-weight: bold;
+  margin-top: 3px;
+}
+
+.leaderboard-meter {
+  display: grid;
+  gap: 6px;
+}
+
+.leaderboard-meter strong,
+.leaderboard-stat strong {
+  color: var(--text);
+  font-size: 20px;
+}
+
+.leaderboard-meter i {
+  display: block;
+  height: 9px;
+  border-radius: 999px;
+  background:
+    linear-gradient(90deg, var(--pink), var(--pink2)) 0 / var(--value) 100% no-repeat,
+    #f1f5f9;
+}
+
+.leaderboard-stat {
+  min-height: 68px;
+  display: grid;
+  align-content: center;
+  gap: 4px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: #fafafa;
+  padding: 10px;
+}
+
+.admin-tool-panel {
+  padding: 22px;
+  margin-bottom: 18px;
+}
+
+.admin-tool-panel h2 {
+  margin: 0 0 8px;
+}
+
+.admin-tool-note {
+  margin: 0;
+  line-height: 1.7;
+}
+
+@media(max-width:1050px) {
+  .leaderboard-row {
+    grid-template-columns: 110px minmax(210px, 1fr) minmax(180px, 1fr);
+  }
+
+  .leaderboard-stat {
+    min-height: 0;
+  }
+}
+
+@media(max-width:800px) {
+  .leaderboard-summary {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .leaderboard-row {
+    grid-template-columns: 1fr;
+  }
+
+  .leaderboard-rank {
+    width: fit-content;
+  }
+}
+
 /* بوكسات التحديات المتعددة */
 .days {
   display: grid;
@@ -2596,6 +2778,9 @@ textarea {
 :root[data-theme="dark"] .achievement-card,
 :root[data-theme="dark"] .calendar-card,
 :root[data-theme="dark"] .hall-card,
+:root[data-theme="dark"] .leaderboard-summary div,
+:root[data-theme="dark"] .leaderboard-row,
+:root[data-theme="dark"] .admin-tool-panel,
 :root[data-theme="dark"] .login-card {
   background: #111827;
   border-color: var(--border);
@@ -2614,6 +2799,7 @@ textarea {
 :root[data-theme="dark"] .avatar-picker,
 :root[data-theme="dark"] .avatar-pick,
 :root[data-theme="dark"] .today-mission-item,
+:root[data-theme="dark"] .leaderboard-stat,
 :root[data-theme="dark"] .calendar-empty {
   background: #172033;
   border-color: var(--border);

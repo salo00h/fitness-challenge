@@ -4,13 +4,13 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>عرض برنامج التمارين</title>
+  <title>لوحة الترتيب</title>
   <link rel="stylesheet" href="style.css" />
 </head>
 
-<body>
+<body class="leaderboard-page">
   <header class="topbar">
-    <div class="brand">نظام التمارين</div>
+    <div class="brand">لوحة الترتيب</div>
     <nav>
       <a href="index.html">العرض</a>
       <a href="stats.html">الإحصائيات</a>
@@ -19,19 +19,16 @@
     </nav>
   </header>
 
-  <main class="container">
-    <section class="hero">
-      <h1>برنامج التمارين</h1>
-      <p>النجاح يبدأ بخطوة، ابدأ التحدي الآن. 💪🔥</p>
+  <main class="container leaderboard-dashboard">
+    <section class="stats-hero leaderboard-hero">
+      <div>
+        <span class="hero-badge">Fitness Challenge</span>
+        <h1>ترتيب المشاركات</h1>
+        <p>الترتيب يعتمد على الالتزام ثم الإنجاز ثم السلسلة ثم الدقائق.</p>
+      </div>
     </section>
 
-    <section id="dailyQuote" class="daily-quote"></section>
-
-    <section id="todayMission" class="today-mission"></section>
-
-    <section id="activityFeed" class="activity-feed"></section>
-
-    <section id="days" class="days"></section>
+    <section id="leaderboardBoard" class="leaderboard-board"></section>
   </main>
 
   <script type="module" src="js/main.js"></script>
