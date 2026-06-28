@@ -341,8 +341,10 @@ export function renderUserBar() {
     <button type="button" class="ghost" id="logoutUserBtn">تسجيل خروج</button>
   `;
 
+  const dashboardSlot = document.getElementById("dashboardUserSlot");
   const hero = main.querySelector(".hero, .stats-hero");
-  if (hero) hero.insertAdjacentElement("afterend", box);
+  if (dashboardSlot) dashboardSlot.appendChild(box);
+  else if (hero) hero.insertAdjacentElement("afterend", box);
   else main.prepend(box);
 
   document.getElementById("logoutUserBtn").onclick = logout;

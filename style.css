@@ -225,6 +225,161 @@ nav a.has-unread:after {
   overflow-wrap: anywhere;
 }
 
+.home-tabs {
+  position: sticky;
+  top: 74px;
+  z-index: 8;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin: 0 0 18px;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 22px;
+  background: rgba(255, 255, 255, .9);
+  backdrop-filter: blur(12px);
+  box-shadow: 0 14px 32px rgba(0, 0, 0, .055);
+}
+
+.home-tabs button {
+  min-height: 46px;
+  border: 0;
+  border-radius: 16px;
+  background: transparent;
+  color: var(--muted);
+  font-weight: bold;
+  font-size: 15px;
+}
+
+.home-tabs button.is-active {
+  background: linear-gradient(135deg, var(--pink), var(--pink2));
+  color: #fff;
+  box-shadow: 0 12px 24px rgba(255, 11, 95, .18);
+}
+
+.home-tab-panel {
+  display: none;
+  animation: fadeSlide .28s ease both;
+}
+
+.home-tab-panel.is-active {
+  display: block;
+}
+
+.quick-actions {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  margin: 0 0 18px;
+}
+
+.quick-actions a,
+.quick-actions button,
+.mini-board-link {
+  min-height: 46px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 16px;
+  background: linear-gradient(135deg, var(--pink), var(--pink2));
+  color: #fff;
+  text-decoration: none;
+  font-weight: bold;
+  padding: 10px 14px;
+  box-shadow: 0 12px 24px rgba(255, 11, 95, .14);
+}
+
+.quick-actions a:nth-child(2),
+.quick-actions a:nth-child(3),
+.quick-actions a:nth-child(4) {
+  background: #fff;
+  color: var(--pink);
+  border: 1px solid #ffd1df;
+  box-shadow: 0 10px 22px rgba(0, 0, 0, .045);
+}
+
+.home-section-title {
+  margin-top: 4px;
+}
+
+.home-page .participants-board {
+  display: none;
+}
+
+.home-page #gamificationHub .reward-card,
+.home-page #gamificationHub .shop-card,
+.home-page #gamificationHub .browser-card,
+.home-page #gamificationHub .theme-card {
+  display: none;
+}
+
+.home-page #gamificationHub .game-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.home-competition-mini {
+  margin: 22px 0 0;
+  border: 1px solid var(--border);
+  border-radius: 24px;
+  padding: 20px;
+  background: rgba(255, 255, 255, .95);
+  box-shadow: 0 16px 36px rgba(0, 0, 0, .06);
+}
+
+.mini-rank-list {
+  display: grid;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.mini-rank-list article {
+  display: grid;
+  grid-template-columns: 112px 46px 1fr;
+  align-items: center;
+  gap: 12px;
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  background: #fff;
+  padding: 12px;
+}
+
+.mini-rank-list article.is-me {
+  border-color: #ffd1df;
+  background: linear-gradient(135deg, #fff, #fff4f8);
+}
+
+.mini-rank-list strong,
+.mini-rank-list article>span {
+  min-height: 40px;
+  display: grid;
+  place-items: center;
+  border-radius: 14px;
+  background: var(--soft);
+  color: var(--pink);
+  font-weight: bold;
+}
+
+.mini-rank-list article>span {
+  width: 46px;
+  font-size: 22px;
+  color: var(--text);
+  background: #fff;
+  border: 1px solid var(--border);
+}
+
+.mini-rank-list b {
+  display: block;
+  color: var(--text);
+  margin-bottom: 4px;
+}
+
+.mini-rank-list small {
+  color: var(--muted);
+  font-weight: bold;
+  line-height: 1.5;
+}
+
 .section-title {
   display: flex;
   justify-content: space-between;
@@ -4060,6 +4215,10 @@ textarea {
 :root[data-theme="night"] .fame-card,
 :root[data-theme="dark"] .fame-ranking,
 :root[data-theme="night"] .fame-ranking,
+:root[data-theme="dark"] .home-tabs,
+:root[data-theme="night"] .home-tabs,
+:root[data-theme="dark"] .home-competition-mini,
+:root[data-theme="night"] .home-competition-mini,
 :root[data-theme="dark"] .achievement-summary article,
 :root[data-theme="night"] .achievement-summary article,
 :root[data-theme="dark"] .store-summary article,
@@ -4122,7 +4281,17 @@ textarea {
 :root[data-theme="dark"] .fame-list article,
 :root[data-theme="night"] .fame-list article,
 :root[data-theme="dark"] .fame-person>span,
-:root[data-theme="night"] .fame-person>span {
+:root[data-theme="night"] .fame-person>span,
+:root[data-theme="dark"] .mini-rank-list article,
+:root[data-theme="night"] .mini-rank-list article,
+:root[data-theme="dark"] .mini-rank-list article>span,
+:root[data-theme="night"] .mini-rank-list article>span,
+:root[data-theme="dark"] .quick-actions a:nth-child(2),
+:root[data-theme="night"] .quick-actions a:nth-child(2),
+:root[data-theme="dark"] .quick-actions a:nth-child(3),
+:root[data-theme="night"] .quick-actions a:nth-child(3),
+:root[data-theme="dark"] .quick-actions a:nth-child(4),
+:root[data-theme="night"] .quick-actions a:nth-child(4) {
   background: #172033;
   border-color: var(--border);
 }
@@ -4193,6 +4362,29 @@ textarea {
   .shop-grid,
   .charts-grid {
     grid-template-columns: 1fr;
+  }
+
+  .home-tabs {
+    top: 116px;
+    grid-template-columns: 1fr;
+    border-radius: 18px;
+  }
+
+  .quick-actions {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .home-page #gamificationHub .game-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .mini-rank-list article {
+    grid-template-columns: 1fr;
+    align-items: stretch;
+  }
+
+  .mini-rank-list article>span {
+    width: 100%;
   }
 
   .message-item {

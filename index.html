@@ -8,7 +8,7 @@
   <link rel="stylesheet" href="style.css" />
 </head>
 
-<body>
+<body class="home-page">
   <header class="topbar">
     <div class="brand">نظام التمارين</div>
     <nav>
@@ -29,13 +29,39 @@
       <p>النجاح يبدأ بخطوة، ابدأ التحدي الآن. 💪🔥</p>
     </section>
 
-    <section id="dailyQuote" class="daily-quote"></section>
+    <section class="home-tabs" aria-label="أقسام الصفحة الرئيسية">
+      <button type="button" class="is-active" data-home-tab="today">لوحة اليوم</button>
+      <button type="button" data-home-tab="challenges">التحديات</button>
+      <button type="button" data-home-tab="activity">النشاط</button>
+    </section>
 
-    <section id="todayMission" class="today-mission"></section>
+    <section id="dashboardTabToday" class="home-tab-panel is-active" data-home-panel="today">
+      <div id="dashboardUserSlot"></div>
 
-    <section id="activityFeed" class="activity-feed"></section>
+      <section id="dailyQuote" class="daily-quote"></section>
 
-    <section id="days" class="days"></section>
+      <section class="quick-actions" aria-label="أزرار سريعة">
+        <button type="button" data-home-tab="challenges">دخول التحديات</button>
+        <a href="stats.html">الإحصائيات</a>
+        <a href="leaderboard.html">الترتيب</a>
+        <a href="messages.html">الرسائل</a>
+      </section>
+
+      <section id="todayMission" class="today-mission"></section>
+    </section>
+
+    <section id="dashboardTabChallenges" class="home-tab-panel" data-home-panel="challenges">
+      <div class="section-title home-section-title">
+        <h2>التحديات</h2>
+        <span>اختاري تحديًا لفتح الأسابيع والأيام</span>
+      </div>
+      <section id="days" class="days"></section>
+    </section>
+
+    <section id="dashboardTabActivity" class="home-tab-panel" data-home-panel="activity">
+      <section id="activityFeed" class="activity-feed"></section>
+      <section id="homeCompetitionMini" class="home-competition-mini"></section>
+    </section>
   </main>
 
   <script type="module" src="js/main.js"></script>

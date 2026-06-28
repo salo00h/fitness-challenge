@@ -1,4 +1,6 @@
 import { state } from "./state.js";
+import { collection, db, getDocs } from "./firebase.js";
+import { USERS_COLLECTION } from "./constants.js";
 import { getData } from "./challengeMeta.js";
 import {
   challengeName,
@@ -23,7 +25,7 @@ import {
   updateProgressBoard,
   workoutOnly
 } from "./progress.js";
-import { renderParticipantsBoard } from "./participants.js";
+import { calcUserStats, participantRankLabel } from "./participants.js";
 import {
   confetti,
   playDing,
@@ -50,7 +52,104 @@ import {
   weekName
 } from "./utils.js";
 
+const HOME_TAB_KEY = "fitness_home_tab_v1";
+const HOME_TABS = ["today", "challenges", "activity"];
+
+export function setHomeTab(tab = "today", options = {}) {
+  const nextTab = HOME_TABS.includes(tab) ? tab : "today";
+  const tabs = document.querySelectorAll(".home-tabs [data-home-tab]");
+  const panels = document.querySelectorAll("[data-home-panel]");
+  if (!tabs.length || !panels.length) return;
+
+  tabs.forEach(button => {
+    const isActive = button.dataset.homeTab === nextTab;
+    button.classList.toggle("is-active", isActive);
+    if (isActive) button.setAttribute("aria-selected", "true");
+    else button.removeAttribute("aria-selected");
+  });
+
+  panels.forEach(panel => {
+    panel.classList.toggle("is-active", panel.dataset.homePanel === nextTab);
+  });
+
+  document.body.dataset.homeTab = nextTab;
+  localStorage.setItem(HOME_TAB_KEY, nextTab);
+
+  if (options.scroll) {
+    document.querySelector(`[data-home-panel="${nextTab}"]`)?.scrollIntoView({
+      behavior: "smooth",
+      block: "start"
+    });
+  }
+}
+
+export function initHomeTabs() {
+  const tabs = document.querySelectorAll("[data-home-tab]");
+  if (!tabs.length) return;
+
+  tabs.forEach(button => {
+    button.addEventListener("click", () => {
+      setHomeTab(button.dataset.homeTab || "today", { scroll: !button.closest(".home-tabs") });
+    });
+  });
+
+  setHomeTab(localStorage.getItem(HOME_TAB_KEY) || "today");
+}
+
+async function ensureParticipants(refreshParticipants = true) {
+  if (!refreshParticipants && state.cachedParticipants) return state.cachedParticipants;
+  if (!refreshParticipants && !state.cachedParticipants) return [];
+
+  const snap = await getDocs(collection(db, USERS_COLLECTION));
+  state.cachedParticipants = snap.docs.map(docSnap => docSnap.data());
+  return state.cachedParticipants;
+}
+
+export function renderHomeCompetitionMini(data) {
+  const box = document.getElementById("homeCompetitionMini");
+  if (!box || !state.cachedParticipants) return;
+
+  const rows = state.cachedParticipants
+    .filter(user => user.name)
+    .map(user => ({
+      user,
+      stats: calcUserStats(data, user.done || {}),
+      isMe: String(user.name || "").trim().toLowerCase() === String(state.currentUser || "").trim().toLowerCase()
+    }))
+    .sort((a, b) =>
+      b.stats.commitment - a.stats.commitment ||
+      b.stats.percent - a.stats.percent ||
+      b.stats.streak - a.stats.streak ||
+      b.stats.minutes - a.stats.minutes ||
+      String(a.user.name).localeCompare(String(b.user.name), "ar")
+    );
+
+  const currentRankIndex = rows.findIndex(row => row.isMe);
+  const topRows = rows.slice(0, 3);
+
+  box.innerHTML = `
+    <div class="section-title">
+      <h2>Ù„Ù…Ø­Ø© Ø§Ù„Ù…Ù†Ø§ÙØ³Ø©</h2>
+      <span>${currentRankIndex >= 0 ? participantRankLabel(currentRankIndex) : "Ø§Ù„ØªØ±ØªÙŠØ¨ Ø§Ù„ÙƒØ§Ù…Ù„"}</span>
+    </div>
+    <div class="mini-rank-list">
+      ${topRows.map((row, index) => `
+        <article class="${row.isMe ? "is-me" : ""}">
+          <strong>${participantRankLabel(index)}</strong>
+          <span>${escapeHtml(row.user.avatar || "🌸")}</span>
+          <div>
+            <b>${escapeHtml(row.user.name)}</b>
+            <small>${row.stats.commitment}% Ø§Ù„ØªØ²Ø§Ù… · ${row.stats.percent}% Ø¥Ù†Ø¬Ø§Ø² · Streak ${row.stats.streak}</small>
+          </div>
+        </article>
+      `).join("")}
+    </div>
+    <a class="mini-board-link" href="leaderboard.html">ÙØªØ­ Ù„ÙˆØ­Ø© Ø§Ù„ØªØ±ØªÙŠØ¨ Ø§Ù„ÙƒØ§Ù…Ù„Ø©</a>
+  `;
+}
+
 export async function openChallenge(challenge) {
+  setHomeTab("challenges");
   state.activeChallenge = Number(challenge) || 1;
   await renderViewer({
     refreshData: false,
@@ -74,6 +173,7 @@ export async function closeChallenge() {
 }
 
 export async function openMissionTarget(challenge, week, programDay) {
+  setHomeTab("challenges");
   setChallengeWeek(challenge, week);
   state.activeChallenge = Number(challenge) || 1;
 
@@ -401,6 +501,7 @@ export async function renderViewer(options = {}) {
   const allData = refreshData || state.cachedData.length === 0 ? await getData() : state.cachedData;
   updateProgressBoard(allData);
   renderTodayMission(allData);
+  await ensureParticipants(refreshParticipants);
 
   if (allData.length === 0) {
     daysBox.innerHTML = `
@@ -554,8 +655,8 @@ export async function renderViewer(options = {}) {
   }).join("");
 
   updateProgressBoard(allData);
-  await renderParticipantsBoard(allData, { refreshParticipants });
   renderActivityFeed(allData);
+  renderHomeCompetitionMini(allData);
   renderGreetingMessage(allData);
 }
 

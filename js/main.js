@@ -18,6 +18,7 @@ import {
   changeChallengeWeek,
   closeChallenge,
   completeProgramDay,
+  initHomeTabs,
   openChallenge,
   openMissionTarget,
   renderViewer,
@@ -91,6 +92,7 @@ async function bootstrap() {
   renderThemeToggle();
   renderSoundToggle();
   renderActiveNav();
+  initHomeTabs();
 
   if (document.getElementById("exerciseForm")) {
     const hasAccess = await ensureAdminAccess();
