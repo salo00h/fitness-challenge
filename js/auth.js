@@ -10,7 +10,7 @@ import {
 import { state } from "./state.js";
 import { escapeHtml, normalizeUserName, userDocId } from "./utils.js";
 import { getDefaultAvatar, renderGreetingMessage, showPop } from "./ui.js";
-import { upgradeLegacyDoneRecords } from "./progress.js";
+import { mergeDoneRecords, sanitizeDoneRecords } from "./progress.js";
 
 // Auth
 export function isAuthStoredFor(name) {
@@ -59,8 +59,19 @@ export function getDone() {
   return state.currentDone || {};
 }
 
+async function ensureProgramDataForDoneSync() {
+  if (state.cachedData.length) return;
+
+  try {
+    const { getData } = await import("./challengeMeta.js");
+    await getData();
+  } catch (e) {
+    console.warn("Could not preload challenge data for done sync", e);
+  }
+}
+
 export async function saveDone(done) {
-  state.currentDone = upgradeLegacyDoneRecords(done);
+  state.currentDone = sanitizeDoneRecords(done);
   localStorage.setItem(DONE_KEY, JSON.stringify(state.currentDone));
 
   if (!state.currentUser) return;
@@ -314,9 +325,11 @@ export async function ensureCurrentUser() {
   const localDone = getLocalDone();
   const migrationKey = `${MIGRATION_KEY}_${userDocId(state.currentUser)}`;
 
-  state.currentDone = localStorage.getItem(migrationKey)
-    ? firebaseDone
-    : { ...firebaseDone, ...localDone };
+  await ensureProgramDataForDoneSync();
+
+  state.currentDone = state.cachedData.length
+    ? mergeDoneRecords(state.cachedData, firebaseDone, localDone)
+    : (localStorage.getItem(migrationKey) ? firebaseDone : { ...firebaseDone, ...localDone });
 
   await saveDone(state.currentDone);
   localStorage.setItem(migrationKey, "yes");

@@ -6,7 +6,7 @@ import {
   getTodayAbsoluteDay,
   isFutureProgramDayItems
 } from "./commitment.js";
-import { calcUserStats, compareParticipantRank } from "./participants.js";
+import { calcUserStats, compareParticipantRank, withCurrentUserSnapshot } from "./participants.js";
 import {
   escapeHtml,
   formatLocalDate,
@@ -221,7 +221,7 @@ function sortRows(rows) {
 
 export function buildCompetitionRows(data, users = state.cachedParticipants || []) {
   return sortRows(
-    users
+    withCurrentUserSnapshot(users)
       .filter(user => normalizeUserName(user.name))
       .map(user => ({
         user,

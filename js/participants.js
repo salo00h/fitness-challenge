@@ -15,6 +15,34 @@ export function isCurrentUserName(name) {
   return normalizeUserName(name).toLowerCase() === normalizeUserName(state.currentUser).toLowerCase();
 }
 
+export function withCurrentUserSnapshot(users = []) {
+  if (!normalizeUserName(state.currentUser)) return users;
+
+  const currentName = normalizeUserName(state.currentUser);
+  const currentKey = currentName.toLowerCase();
+  const profile = state.currentUserProfile || {};
+  const snapshot = {
+    ...profile,
+    name: currentName,
+    done: state.currentDone || {}
+  };
+
+  let found = false;
+  const merged = users.map(user => {
+    if (normalizeUserName(user.name).toLowerCase() !== currentKey) return user;
+    found = true;
+    return {
+      ...user,
+      ...snapshot,
+      avatar: snapshot.avatar || user.avatar,
+      done: snapshot.done
+    };
+  });
+
+  if (!found) merged.push(snapshot);
+  return merged;
+}
+
 export function getParticipantWeekScope(data) {
   const challengeNumbers = [...new Set(data.map(item => Number(item.challenge || 1)))].sort((a, b) => a - b);
   const fallbackChallenge = challengeNumbers.includes(1) ? 1 : (challengeNumbers[0] || 1);
@@ -112,7 +140,7 @@ export async function renderParticipantsBoard(data, options = {}) {
     state.cachedParticipants = snap.docs.map(d => d.data());
   }
 
-  const users = state.cachedParticipants
+  const users = withCurrentUserSnapshot(state.cachedParticipants)
     .filter(u => u.name)
     .sort((a, b) => String(a.name).localeCompare(String(b.name), "ar"));
 
@@ -188,7 +216,7 @@ export function renderHallOfFame(data) {
   const box = document.getElementById("hallOfFame");
   if (!box || !state.cachedParticipants) return;
 
-  const rows = state.cachedParticipants
+  const rows = withCurrentUserSnapshot(state.cachedParticipants)
     .filter(user => user.name)
     .map(user => ({
       user,

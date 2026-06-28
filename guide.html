@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>طريقة الحساب</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+
+<body class="guide-page">
+  <header class="topbar">
+    <div class="brand">طريقة الحساب</div>
+    <nav>
+      <a href="index.html">العرض</a>
+      <a href="stats.html">الإحصائيات</a>
+      <a href="guide.html">طريقة الحساب</a>
+      <a href="leaderboard.html">لوحة الترتيب</a>
+      <a href="messages.html">الرسائل</a>
+      <a href="achievements.html">الأوسمة</a>
+      <a href="store.html">المتجر</a>
+      <a href="hall.html">Hall of Fame</a>
+      <a href="admin.html">الإعدادات</a>
+    </nav>
+  </header>
+
+  <main class="container guide-dashboard">
+    <section class="guide-hero">
+      <span>دليل الأرقام</span>
+      <h1>كيف يحسب الموقع الإنجاز والالتزام؟</h1>
+      <p>هذه الصفحة تشرح معنى كل رقم يظهر في العرض، الإحصائيات، الترتيب، والأوسمة.</p>
+    </section>
+
+    <section class="guide-grid">
+      <article class="guide-card">
+        <span>01</span>
+        <h2>نسبة الإنجاز</h2>
+        <p>عدد التمارين أو أيام الراحة التي تم تسجيلها مقسوم على إجمالي عناصر البرنامج.</p>
+        <code>الإنجاز = المكتمل ÷ الإجمالي × 100</code>
+      </article>
+
+      <article class="guide-card">
+        <span>02</span>
+        <h2>نسبة الالتزام</h2>
+        <p>تقيس هل تم إنجاز اليوم في موعده. الأسبوع الأول يحسب 100% للتسهيل، ومن الأسبوع الثاني يقل الالتزام عند التأخير.</p>
+        <code>كل يوم تأخير = ناقص 10 نقاط</code>
+      </article>
+
+      <article class="guide-card">
+        <span>03</span>
+        <h2>Streak</h2>
+        <p>أطول سلسلة أيام برنامج مكتملة في موعدها داخل نفس التحدي.</p>
+        <code>اليوم المكتمل في وقته يزيد السلسلة</code>
+      </article>
+
+      <article class="guide-card">
+        <span>04</span>
+        <h2>الدقائق</h2>
+        <p>مجموع مدة العناصر المكتملة فقط. يوم الراحة لا يضيف دقائق إذا لم تكن له مدة.</p>
+        <code>الدقائق = مجموع مدد التمارين المكتملة</code>
+      </article>
+
+      <article class="guide-card">
+        <span>05</span>
+        <h2>الأسابيع المكتملة</h2>
+        <p>الأسبوع يصبح مكتملًا عندما تكون كل أيامه وكل عناصره مسجلة كمكتملة.</p>
+        <code>أسبوع مكتمل = كل أيام الأسبوع مكتملة</code>
+      </article>
+
+      <article class="guide-card">
+        <span>06</span>
+        <h2>XP والمستوى</h2>
+        <p>النقاط تأتي من الإنجاز، الدقائق، السلسلة، الأسابيع المكتملة، مكافأة الالتزام، والمكافآت اليومية.</p>
+        <code>XP = إنجازات + دقائق + Streak + أسابيع + مكافآت</code>
+      </article>
+    </section>
+
+    <section class="guide-flow">
+      <div class="section-title">
+        <h2>كيف يعمل الموقع؟</h2>
+        <span>من الضغط على الإنجاز إلى الترتيب</span>
+      </div>
+
+      <div class="guide-steps">
+        <article>
+          <strong>1</strong>
+          <p>المستخدمة تسجل الدخول باسمها وكلمة المرور.</p>
+        </article>
+        <article>
+          <strong>2</strong>
+          <p>عند الضغط على إنجاز، يتم حفظ السجل في Firebase داخل participants.</p>
+        </article>
+        <article>
+          <strong>3</strong>
+          <p>كل سجل يحفظ بنفس الشكل: completed و completedAt بدون تغيير.</p>
+        </article>
+        <article>
+          <strong>4</strong>
+          <p>الأيام المستقبلية لا تقبل الإنجاز، وأي سجل قديم قبل موعده لا يدخل في الحساب.</p>
+        </article>
+        <article>
+          <strong>5</strong>
+          <p>الترتيب يحسب حسب الالتزام، ثم الإنجاز، ثم Streak، ثم الدقائق.</p>
+        </article>
+      </div>
+    </section>
+  </main>
+
+  <script type="module" src="js/main.js"></script>
+</body>
+
+</html>

@@ -3,11 +3,13 @@ import { CHALLENGE_DAYS } from "./constants.js";
 import { challengeName, challengeNumber } from "./challengeMeta.js";
 import {
   dayName,
+  getCompletedAt,
   getProgramAbsoluteDay,
   getProgressTitle,
   isDone,
   itemProgramDay,
   itemWeek,
+  startOfDay,
   weekName
 } from "./utils.js";
 import { calcCommitmentPercent, calcCommitmentStreak, getExpectedDate } from "./commitment.js";
@@ -105,6 +107,50 @@ export function upgradeLegacyDoneRecords(done) {
   });
 
   return upgraded;
+}
+
+function getItemsById(data = state.cachedData) {
+  return (data || []).reduce((map, item) => {
+    if (item?.id) map[item.id] = item;
+    return map;
+  }, {});
+}
+
+export function isEarlyCompletionRecord(item, record) {
+  if (!item || !isDone(record)) return false;
+
+  const completedAt = getCompletedAt(record);
+  const expectedDate = getExpectedDate(item);
+  if (!completedAt || !expectedDate) return false;
+
+  return startOfDay(completedAt).getTime() < startOfDay(expectedDate).getTime();
+}
+
+export function sanitizeDoneRecords(done, data = state.cachedData) {
+  const upgraded = upgradeLegacyDoneRecords(done || {});
+  if (!data?.length) return upgraded;
+
+  const itemsById = getItemsById(data);
+
+  return Object.entries(upgraded).reduce((clean, [id, record]) => {
+    const item = itemsById[id];
+    if (item && isEarlyCompletionRecord(item, record)) return clean;
+    clean[id] = record;
+    return clean;
+  }, {});
+}
+
+export function mergeDoneRecords(data, firebaseDone = {}, localDone = {}) {
+  const merged = sanitizeDoneRecords(firebaseDone, data);
+  const safeLocal = sanitizeDoneRecords(localDone, data);
+
+  Object.entries(safeLocal).forEach(([id, record]) => {
+    if (!isDone(merged[id]) && isDone(record)) {
+      merged[id] = record;
+    }
+  });
+
+  return merged;
 }
 
 // Progress Calculations

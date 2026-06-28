@@ -25,7 +25,12 @@ import {
   updateProgressBoard,
   workoutOnly
 } from "./progress.js";
-import { calcUserStats, compareParticipantRank, participantRankLabel } from "./participants.js";
+import {
+  calcUserStats,
+  compareParticipantRank,
+  participantRankLabel,
+  withCurrentUserSnapshot
+} from "./participants.js";
 import {
   confetti,
   playDing,
@@ -109,7 +114,7 @@ export function renderHomeCompetitionMini(data) {
   const box = document.getElementById("homeCompetitionMini");
   if (!box || !state.cachedParticipants) return;
 
-  const rows = state.cachedParticipants
+  const rows = withCurrentUserSnapshot(state.cachedParticipants)
     .filter(user => user.name)
     .map(user => ({
       user,
@@ -270,7 +275,7 @@ export function renderActivityFeed(data) {
   const seen = new Set();
   const activities = [];
 
-  state.cachedParticipants.forEach(user => {
+  withCurrentUserSnapshot(state.cachedParticipants).forEach(user => {
     const name = String(user.name || "").trim();
     if (!name || !user.done) return;
 
