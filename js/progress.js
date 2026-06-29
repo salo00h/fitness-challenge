@@ -116,7 +116,7 @@ function getItemsById(data = state.cachedData) {
   }, {});
 }
 
-export function isEarlyCompletionRecord(item, record) {
+function isEarlyCompletionRecordStrict(item, record) {
   if (!item || !isDone(record)) return false;
 
   const completedAt = getCompletedAt(record);
@@ -126,18 +126,45 @@ export function isEarlyCompletionRecord(item, record) {
   return startOfDay(completedAt).getTime() < startOfDay(expectedDate).getTime();
 }
 
-export function sanitizeDoneRecords(done, data = state.cachedData) {
+export function isEarlyCompletionRecord(item, record) {
+  if (!item || !isDone(record)) return false;
+  if (itemWeek(item) === 1) return false;
+
+  return isEarlyCompletionRecordStrict(item, record);
+}
+
+export function getEarlyCompletionRecords(done, data = state.cachedData) {
   const upgraded = upgradeLegacyDoneRecords(done || {});
-  if (!data?.length) return upgraded;
+  if (!data?.length) return [];
 
   const itemsById = getItemsById(data);
 
-  return Object.entries(upgraded).reduce((clean, [id, record]) => {
+  return Object.entries(upgraded)
+    .filter(([id, record]) => {
+      const item = itemsById[id];
+      return item && isEarlyCompletionRecord(item, record);
+    })
+    .map(([id, record]) => ({
+      id,
+      item: itemsById[id],
+      record
+    }));
+}
+
+export function sanitizeDoneRecords(done) {
+  return upgradeLegacyDoneRecords(done || {});
+}
+
+export function countRecordsThatOldSanitizeWouldRemove(done, data = state.cachedData) {
+  const upgraded = upgradeLegacyDoneRecords(done || {});
+  if (!data?.length) return 0;
+
+  const itemsById = getItemsById(data);
+
+  return Object.entries(upgraded).reduce((count, [id, record]) => {
     const item = itemsById[id];
-    if (item && isEarlyCompletionRecord(item, record)) return clean;
-    clean[id] = record;
-    return clean;
-  }, {});
+    return item && isEarlyCompletionRecordStrict(item, record) ? count + 1 : count;
+  }, 0);
 }
 
 export function mergeDoneRecords(data, firebaseDone = {}, localDone = {}) {

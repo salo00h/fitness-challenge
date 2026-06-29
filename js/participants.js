@@ -1,14 +1,25 @@
 import { collection, db, getDocs } from "./firebase.js";
 import { USERS_COLLECTION } from "./constants.js";
 import { state } from "./state.js";
-import { challengeName } from "./challengeMeta.js";
-import { calcCommitmentPercent, calcCommitmentStreak } from "./commitment.js";
+import { challengeName, getData } from "./challengeMeta.js";
+import { calcCommitmentPercent, calcCommitmentStreak, getExpectedDate } from "./commitment.js";
 import {
   calcCompletionPercent,
+  countRecordsThatOldSanitizeWouldRemove,
+  getEarlyCompletionRecords,
   getCompletedWeeks,
   workoutOnly
 } from "./progress.js";
-import { escapeHtml, getCompletedAt, getProgressTitle, isDone, normalizeUserName, weekName } from "./utils.js";
+import {
+  escapeHtml,
+  getCompletedAt,
+  getProgressTitle,
+  isDone,
+  itemProgramDay,
+  itemWeek,
+  normalizeUserName,
+  weekName
+} from "./utils.js";
 import { getUserAvatar } from "./ui.js";
 
 export function isCurrentUserName(name) {
@@ -108,6 +119,72 @@ export function compareParticipantRank(a, b) {
     b.stats.minutes - a.stats.minutes ||
     getLatestCompletionMs(a.user.done || {}) - getLatestCompletionMs(b.user.done || {}) ||
     String(a.user.name).localeCompare(String(b.user.name), "ar");
+}
+
+function debugEarlyRecordRow(entry) {
+  const completedAt = getCompletedAt(entry.record);
+  const expectedDate = getExpectedDate(entry.item);
+
+  return {
+    id: entry.id,
+    title: entry.item.title || "بدون عنوان",
+    week: itemWeek(entry.item),
+    day: itemProgramDay(entry.item),
+    completedAt: completedAt ? completedAt.toISOString() : "",
+    expectedDate: expectedDate ? expectedDate.toISOString() : ""
+  };
+}
+
+export async function debugUserDone(name = state.currentUser) {
+  const wantedName = normalizeUserName(name);
+  if (!wantedName) {
+    console.warn("debugUserDone: اكتب اسم المشاركة، مثال: debugUserDone('صفاء')");
+    return null;
+  }
+
+  const data = state.cachedData.length ? state.cachedData : await getData();
+
+  if (!state.cachedParticipants) {
+    const snap = await getDocs(collection(db, USERS_COLLECTION));
+    state.cachedParticipants = snap.docs.map(d => d.data());
+  }
+
+  const users = withCurrentUserSnapshot(state.cachedParticipants || []);
+  const user = users.find(item =>
+    normalizeUserName(item.name).toLowerCase() === wantedName.toLowerCase()
+  );
+
+  if (!user) {
+    console.warn(`debugUserDone: لم أجد مشاركة باسم ${wantedName}`);
+    return null;
+  }
+
+  const done = user.done || {};
+  const stats = calcUserStats(data, done);
+  const earlyRecords = getEarlyCompletionRecords(done, data);
+  const oldBugRemovedCount = countRecordsThatOldSanitizeWouldRemove(done, data);
+  const report = {
+    name: normalizeUserName(user.name),
+    totalDone: Object.values(done).filter(isDone).length,
+    completedExercises: `${stats.completed} / ${stats.total}`,
+    removedEarlyRecords: 0,
+    earlyRecordsAfterWeekOneException: earlyRecords.length,
+    wouldHaveBeenRemovedByOldBug: oldBugRemovedCount,
+    completedWeeks: stats.completedWeeks,
+    completionPercent: `${stats.percent}%`,
+    commitmentPercent: `${stats.commitment}%`,
+    streak: stats.streak,
+    minutes: stats.minutes
+  };
+  const earlyRows = earlyRecords.map(debugEarlyRecordRow);
+
+  console.table(report);
+  if (earlyRows.length) console.table(earlyRows);
+
+  return {
+    report,
+    earlyRecords: earlyRows
+  };
 }
 
 export function participantRankLabel(index) {

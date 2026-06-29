@@ -31,6 +31,7 @@ import {
   updateProgressBoard
 } from "./progress.js";
 import {
+  debugUserDone,
   renderParticipantsBoard
 } from "./participants.js";
 import {
@@ -86,6 +87,7 @@ window.toggleTheme = toggleTheme;
 window.toggleSoundMuted = toggleSoundMuted;
 window.closeCertificate = closeCertificate;
 window.debugChallengeLock = debugChallengeLock;
+window.debugUserDone = debugUserDone;
 
 async function bootstrap() {
   applyTheme();
