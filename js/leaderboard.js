@@ -1,12 +1,14 @@
 import { collection, db, getDocs } from "./firebase.js";
-import { USERS_COLLECTION } from "./constants.js";
+import { PUBLIC_PROFILES_COLLECTION } from "./constants.js";
 import { getData } from "./challengeMeta.js";
-import { calcUserStats, compareParticipantRank } from "./participants.js";
+import { compareParticipantRank, statsFromPublicProfile } from "./participants.js";
 import { escapeHtml, normalizeUserName } from "./utils.js";
 import { getUserAvatar, showPop } from "./ui.js";
 
+// لوحة الترتيب و Hall of Fame تقرأ فقط الملفات العامة (public-profiles):
+// اسم، صورة رمزية، وإحصائيات محسوبة مسبقًا - بدون passwordHash أو أي بيانات خاصة.
 export async function fetchParticipantUsers() {
-  const snap = await getDocs(collection(db, USERS_COLLECTION));
+  const snap = await getDocs(collection(db, PUBLIC_PROFILES_COLLECTION));
   return snap.docs
     .map(doc => ({ id: doc.id, ...doc.data() }))
     .filter(user => normalizeUserName(user.name));
@@ -19,7 +21,7 @@ export function sortLeaderboardRows(rows) {
 export function buildLeaderboardRows(data, users) {
   return sortLeaderboardRows(users.map(user => ({
     user,
-    stats: calcUserStats(data, user.done || {})
+    stats: statsFromPublicProfile(user)
   })));
 }
 

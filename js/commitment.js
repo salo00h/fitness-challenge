@@ -6,9 +6,56 @@ import {
   isDone,
   itemWeek,
   startOfDay,
-  startOfLocalDay
+  startOfLocalDay,
+  weekName
 } from "./utils.js";
 import { getProgramDayGroups, isProgramDayComplete, workoutOnly } from "./progress.js";
+
+function groupByChallengeAndKey(items, keyFn) {
+  return items.reduce((groups, item) => {
+    const key = keyFn(item);
+    if (!groups[key]) groups[key] = [];
+    groups[key].push(item);
+    return groups;
+  }, {});
+}
+
+// عدد التحديات المكتملة بالكامل - يُستخدم لبناء الملخص العام (public-profiles)
+// ولصفحة Hall of Fame.
+export function countCompletedChallenges(data, done) {
+  const groups = groupByChallengeAndKey(data, item => Number(item.challenge || 1));
+  return Object.values(groups).filter(items =>
+    items.length > 0 && items.every(item => isDone(done[item.id]))
+  ).length;
+}
+
+// أسرع أسبوع تم إنجازه بالكامل (بالأيام) - نفس الاستخدام أعلاه.
+export function getFastestCompletedWeek(data, done) {
+  const groups = groupByChallengeAndKey(data, item => `${Number(item.challenge || 1)}-${Number(item.week || 1)}`);
+
+  const completed = Object.values(groups)
+    .map(items => {
+      if (!items.length || !items.every(item => isDone(done[item.id]))) return null;
+
+      const dates = items.map(item => getCompletedAt(done[item.id])).filter(Boolean);
+      if (dates.length !== items.length) return null;
+
+      const expectedDates = items.map(getExpectedDate).filter(Boolean);
+      const start = expectedDates.length ? new Date(Math.min(...expectedDates.map(date => date.getTime()))) : dates[0];
+      const end = new Date(Math.max(...dates.map(date => date.getTime())));
+      const elapsedDays = Math.max(1, Math.ceil((end - start) / DAY_MS) + 1);
+      const sample = items[0];
+
+      return {
+        elapsedDays,
+        label: `${weekName(sample.week)} - التحدي ${Number(sample.challenge || 1)}`
+      };
+    })
+    .filter(Boolean)
+    .sort((a, b) => a.elapsedDays - b.elapsedDays);
+
+  return completed[0] || null;
+}
 
 export function getExpectedDate(item) {
   const absoluteDay = getProgramAbsoluteDay(item);

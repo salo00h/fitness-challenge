@@ -6,7 +6,9 @@ export const state = {
   cachedChallengeMeta: {},
   cachedParticipants: null,
   currentUser: null,
+  currentUserUid: null,
   currentUserProfile: null,
   currentDone: {},
+  isAdminUser: false,
   warnedDefaultStartDates: new Set()
 };

@@ -2194,6 +2194,27 @@ textarea {
   margin-top: 8px;
 }
 
+.login-mode-tabs {
+  display: flex;
+  gap: 8px;
+  margin: 4px 0 16px;
+}
+
+.login-mode-tabs button {
+  flex: 1;
+  margin: 0;
+  background: #f8fafc;
+  color: var(--text);
+  border: 1px solid var(--border);
+  box-shadow: none;
+}
+
+.login-mode-tabs button.is-active {
+  color: white;
+  background: linear-gradient(135deg, var(--pink), var(--pink2));
+  border-color: transparent;
+}
+
 .avatar-fields {
   margin-top: 14px;
   text-align: right;

@@ -1,0 +1,165 @@
+rules_version = '2';
+
+// ============================================================================
+// Fitness Challenge - Firestore Security Rules
+// المشروع: fitness-challenge-6061e
+//
+// يعتمد التطبيق الآن على Firebase Authentication (Email/Password) الحقيقية.
+// كل مشاركة لها Firebase Auth UID، ووثيقة بياناتها الخاصة في participants/{uid}.
+// لا وجود لأي "allow read, write: if true" في هذا الملف، ولا اعتماد على
+// أي قيمة قادمة من localStorage أو من JavaScript في المتصفح لتحديد الهوية.
+// ============================================================================
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    // Admin تُحدَّد عبر وثيقة roles/{uid} التي لا يمكن لأي عميل كتابتها
+    // (تُنشأ فقط من Firebase Console أو عبر Admin SDK من سكربت خارج المتصفح).
+    function isAdmin() {
+      return isSignedIn() &&
+        exists(/databases/$(database)/documents/roles/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/roles/$(request.auth.uid)).data.admin == true;
+    }
+
+    // ------------------------------------------------------------------
+    // exercises: التمارين + وثائق "بيانات التحدي" (type == "challenge-meta")
+    // القراءة عامة عمدًا (بدون تسجيل دخول) حتى تبقى لوحة الترتيب و Hall of
+    // Fame قابلة للعرض بدون حساب - لا يوجد بها أي بيانات شخصية أو حساسة.
+    // الكتابة (إضافة/تعديل/حذف تمرين أو بيانات تحدٍ) لحساب Admin فقط.
+    // ------------------------------------------------------------------
+    match /exercises/{exerciseId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // ------------------------------------------------------------------
+    // participants/{uid}: بيانات الحساب الخاصة (الاسم، الصورة، done{} بكل
+    // تواريخها، lastLoginAt...). لا يوجد فيها بعد اليوم أي passwordHash -
+    // كلمات المرور بالكامل مسؤولية Firebase Authentication.
+    // صاحبة الحساب فقط تقرأ/تكتب وثيقتها (معرّف الوثيقة = uid الخاص بها)،
+    // و Admin يقرأ/يدير كل الوثائق لأغراض الدعم الفني.
+    // ------------------------------------------------------------------
+    match /participants/{userId} {
+      allow read: if isAdmin() || (isSignedIn() && request.auth.uid == userId);
+
+      allow create, update: if isAdmin() || (
+        isSignedIn() &&
+        request.auth.uid == userId &&
+        request.resource.data.keys().hasOnly([
+          'name', 'avatar', 'done', 'updatedAt', 'lastLoginAt', 'claimedFromLegacyId'
+        ])
+      );
+
+      allow delete: if isAdmin();
+    }
+
+    // ------------------------------------------------------------------
+    // public-profiles/{uid}: نسخة عامة مختصرة (اسم، صورة، إحصائيات محسوبة
+    // مسبقًا، آخر إنجازات مختصرة) تُستخدم فقط لعرض لوحة الترتيب و Hall of
+    // Fame والنشاط - بدون أي بيانات خاصة. القراءة عامة لنفس سبب exercises،
+    // والكتابة لصاحبة الحساب فقط ولحقولها المحددة، أو Admin.
+    // ملاحظة: القيم هنا (percent/commitment/...) محسوبة من طرف العميل، لذلك
+    // لا يمكن اعتبارها "مصدر ثقة" مطلق بنسبة 100% بدون Cloud Function تتحقق
+    // من صحتها مقابل exercises - موضح بالتفصيل في FIREBASE_SECURITY_SETUP.md.
+    // ------------------------------------------------------------------
+    match /public-profiles/{userId} {
+      allow read: if true;
+
+      allow create, update: if isAdmin() || (
+        isSignedIn() &&
+        request.auth.uid == userId &&
+        request.resource.data.uid == userId &&
+        request.resource.data.keys().hasOnly([
+          'uid', 'name', 'avatar', 'publicStats', 'recentDone', 'updatedAt'
+        ])
+      );
+
+      allow delete: if isAdmin();
+    }
+
+    // ------------------------------------------------------------------
+    // legacy-participants/{legacyId}: نسخ من حسابات ما قبل التفعيل الأمني
+    // (بدون passwordHash - أُزيل عند الترحيل عبر سكربت Admin SDK). تُستخدم
+    // فقط لمرة واحدة عند أول تسجيل دخول بنفس الاسم لاستعادة التقدم القديم.
+    // لا يمكن لأي عميل إنشاءها أو حذفها (فقط سكربت الترحيل بصلاحيات Admin
+    // SDK يفعل ذلك، وهو يتجاوز هذه القواعد أصلًا). التعديل الوحيد المسموح
+    // للعميل هو "المطالبة" بالوثيقة مرة واحدة (تعيين claimedBy لنفسه فقط،
+    // وفقط إذا لم تُطالَب من قبل).
+    // ------------------------------------------------------------------
+    match /legacy-participants/{legacyId} {
+      allow read: if isSignedIn() || isAdmin();
+      allow create, delete: if isAdmin();
+
+      allow update: if isAdmin() || (
+        isSignedIn() &&
+        !('claimedBy' in resource.data) &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['claimedBy', 'claimedAt']) &&
+        request.resource.data.claimedBy == request.auth.uid
+      );
+    }
+
+    // ------------------------------------------------------------------
+    // notifications/{uid}__{messageId}: كل مشاركة تقرأ/تدير إشعاراتها فقط.
+    // معرف الوثيقة يبدأ دائمًا بـ uid صاحبتها (مفصول بـ "__")، ويُتحقق من
+    // ذلك بالإضافة إلى حقل userId داخل الوثيقة - لا يمكن لأي مشاركة إنشاء
+    // إشعار باسم مشاركة أخرى. Admin يستطيع إنشاء/قراءة إشعارات لأي مشاركة.
+    // ------------------------------------------------------------------
+    match /notifications/{notificationId} {
+      allow read: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
+
+      allow create: if isAdmin() || (
+        isSignedIn() &&
+        request.resource.data.userId == request.auth.uid &&
+        notificationId.split('__')[0] == request.auth.uid
+      );
+
+      allow update: if isAdmin() || (
+        isSignedIn() &&
+        resource.data.userId == request.auth.uid &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read', 'archived', 'updatedAt'])
+      );
+
+      allow delete: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
+    }
+
+    // ------------------------------------------------------------------
+    // game-state/{uid}: جواهر، XP إضافية، عناصر مفتوحة، عجلة الحظ اليومية.
+    // كل مشاركة تقرأ/تكتب وثيقتها فقط، ولا تستطيع تغيير userId لتصبح مشاركة
+    // أخرى. تحقق أساسي من نوع/حدود القيم (خط دفاع أول فقط) - الحماية الكاملة
+    // لمنطق الاقتصاد (منع تكرار لف العجلة، الخ) تحتاج Cloud Function، موضح
+    // في FIREBASE_SECURITY_SETUP.md.
+    // ------------------------------------------------------------------
+    match /game-state/{userId} {
+      allow read: if isAdmin() || (isSignedIn() && request.auth.uid == userId);
+
+      allow write: if isAdmin() || (
+        isSignedIn() &&
+        request.auth.uid == userId &&
+        request.resource.data.userId == userId &&
+        request.resource.data.gems is number && request.resource.data.gems >= 0 &&
+        request.resource.data.bonusXp is number && request.resource.data.bonusXp >= 0
+      );
+    }
+
+    // ------------------------------------------------------------------
+    // roles/{uid}: تحديد صلاحية Admin. لا يمكن لأي عميل (حتى Admin نفسها)
+    // كتابة هذه الوثيقة من المتصفح - تُضاف فقط من Firebase Console أو عبر
+    // Admin SDK. القراءة الذاتية مسموحة فقط لتمكين الواجهة من معرفة صلاحيتها.
+    // ------------------------------------------------------------------
+    match /roles/{userId} {
+      allow read: if isSignedIn() && (request.auth.uid == userId || isAdmin());
+      allow write: if false;
+    }
+
+    // ------------------------------------------------------------------
+    // أي مسار آخر غير مذكور أعلاه: رفض كامل صراحة (لا Test Mode، لا فتح عام).
+    // ------------------------------------------------------------------
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

@@ -1,69 +1,22 @@
-import { DAY_MS } from "./constants.js";
 import { getData } from "./challengeMeta.js";
-import { getExpectedDate } from "./commitment.js";
 import { fetchParticipantUsers } from "./leaderboard.js";
-import { calcUserStats, compareParticipantRank } from "./participants.js";
+import { compareParticipantRank, statsFromPublicProfile } from "./participants.js";
 import { getUserAvatar, showPop } from "./ui.js";
 import {
   escapeHtml,
-  getCompletedAt,
-  isDone,
-  normalizeUserName,
-  weekName
+  normalizeUserName
 } from "./utils.js";
-
-function groupBy(items, keyFn) {
-  return items.reduce((groups, item) => {
-    const key = keyFn(item);
-    if (!groups[key]) groups[key] = [];
-    groups[key].push(item);
-    return groups;
-  }, {});
-}
-
-function countCompletedChallenges(data, done) {
-  const groups = groupBy(data, item => Number(item.challenge || 1));
-  return Object.values(groups).filter(items =>
-    items.length > 0 && items.every(item => isDone(done[item.id]))
-  ).length;
-}
-
-function getFastestWeek(data, done) {
-  const groups = groupBy(data, item => `${Number(item.challenge || 1)}-${Number(item.week || 1)}`);
-  const completed = Object.values(groups)
-    .map(items => {
-      if (!items.length || !items.every(item => isDone(done[item.id]))) return null;
-
-      const dates = items.map(item => getCompletedAt(done[item.id])).filter(Boolean);
-      if (dates.length !== items.length) return null;
-
-      const expectedDates = items.map(getExpectedDate).filter(Boolean);
-      const start = expectedDates.length ? new Date(Math.min(...expectedDates.map(date => date.getTime()))) : dates[0];
-      const end = new Date(Math.max(...dates.map(date => date.getTime())));
-      const elapsedDays = Math.max(1, Math.ceil((end - start) / DAY_MS) + 1);
-      const sample = items[0];
-
-      return {
-        elapsedDays,
-        label: `${weekName(sample.week)} - التحدي ${Number(sample.challenge || 1)}`
-      };
-    })
-    .filter(Boolean)
-    .sort((a, b) => a.elapsedDays - b.elapsedDays);
-
-  return completed[0] || null;
-}
 
 function buildRows(data, users) {
   return users
     .filter(user => normalizeUserName(user.name))
     .map(user => {
-      const done = user.done || {};
+      const stats = statsFromPublicProfile(user);
       return {
         user,
-        stats: calcUserStats(data, done),
-        completedChallenges: countCompletedChallenges(data, done),
-        fastestWeek: getFastestWeek(data, done)
+        stats,
+        completedChallenges: Number(user.publicStats?.completedChallenges) || 0,
+        fastestWeek: user.publicStats?.fastestWeek || null
       };
     });
 }

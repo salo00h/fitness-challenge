@@ -1,0 +1,9 @@
+node_modules/
+scripts/node_modules/
+scripts/backups/
+backups/
+*service-account*.json
+*serviceAccountKey*.json
+*.credentials.json
+.env
+.env.*

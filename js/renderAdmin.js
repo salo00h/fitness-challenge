@@ -1,4 +1,4 @@
-import { collection, db, doc, getDocs, setDoc } from "./firebase.js";
+import { collection, db, getDocs } from "./firebase.js";
 import { DEFAULT_CHALLENGE_START_DATE, USERS_COLLECTION } from "./constants.js";
 import { state } from "./state.js";
 import { getDone, saveDone } from "./auth.js";
@@ -23,7 +23,6 @@ import {
   normalizeDateInput,
   normalizeUserName,
   uid,
-  userDocId,
   weekName
 } from "./utils.js";
 import { showPop } from "./ui.js";
@@ -391,8 +390,11 @@ export async function renderAdminParticipants() {
 
   box.innerHTML = users.map(user => {
     const name = normalizeUserName(user.name);
-    const protectedText = user.passwordHash ? "محمي" : "يحتاج كلمة مرور";
-    const protectedClass = user.passwordHash ? "is-safe" : "is-warning";
+    // الوثائق القديمة (قبل التفعيل الأمني) لا تزال تحتوي passwordHash كأرشيف فقط
+    // - لا نعرض قيمته أبدًا، فقط نميّز الحساب القديم عن حساب Firebase Auth الجديد.
+    const isLegacy = !!user.passwordHash;
+    const protectedText = isLegacy ? "حساب قديم (قبل الترحيل)" : "حساب Firebase Auth";
+    const protectedClass = isLegacy ? "is-warning" : "is-safe";
 
     return `
       <article class="admin-participant-item">
@@ -403,28 +405,19 @@ export async function renderAdminParticipants() {
         <div class="admin-participant-meta">
           <span>آخر دخول: ${formatDateTime(user.lastLoginAt)}</span>
         </div>
-        <button type="button" class="ghost" onclick="resetParticipantPassword('${encodeURIComponent(name)}')">إعادة تعيين كلمة المرور</button>
+        <button type="button" class="ghost" onclick="resetParticipantPassword('${encodeURIComponent(name)}')">كيف أُعيد كلمة المرور؟</button>
       </article>
     `;
   }).join("");
 }
 
+// إعادة تعيين كلمة مرور حساب Firebase Auth لمشاركة أخرى تتطلب صلاحيات Admin SDK
+// (لا يمكن تنفيذها بأمان من كود الواجهة الأمامية). هذا الزر يوضح الطريقة الصحيحة بدل تنفيذ عملية غير آمنة.
 export async function resetParticipantPassword(name) {
   const normalized = normalizeUserName(decodeURIComponent(name || ""));
   if (!normalized) return;
-  if (!confirm(`إعادة تعيين كلمة مرور ${normalized}؟`)) return;
 
-  await setDoc(doc(db, USERS_COLLECTION, userDocId(normalized)), {
-    name: normalized,
-    passwordHash: "",
-    passwordCreatedAt: "",
-    passwordChangedAt: "",
-    passwordResetAt: new Date().toISOString()
-  }, { merge: true });
-
-  state.cachedParticipants = null;
-  await renderAdminParticipants();
-  showPop("تمت إعادة تعيين كلمة المرور. ستنشئ المشاركة كلمة مرور جديدة عند الدخول القادم.");
+  showPop("افتحي Firebase Console > Authentication، ابحثي عن المستخدمة، ثم اختاري إعادة تعيين كلمة المرور من هناك.", "info");
 }
 
 export function editItem(id) {

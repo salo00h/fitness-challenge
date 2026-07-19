@@ -8,6 +8,16 @@ import {
   deleteDoc,
   doc
 } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
+import {
+  getAuth,
+  onAuthStateChanged,
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
+  signOut,
+  updatePassword,
+  reauthenticateWithCredential,
+  EmailAuthProvider
+} from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyBhIIJTXoyI9ZowslTRGN5IDQ5qTgeuf1M",
@@ -21,6 +31,7 @@ const firebaseConfig = {
 
 export const app = initializeApp(firebaseConfig);
 export const db = getFirestore(app);
+export const auth = getAuth(app);
 
 export {
   collection,
@@ -28,5 +39,12 @@ export {
   getDoc,
   setDoc,
   deleteDoc,
-  doc
+  doc,
+  onAuthStateChanged,
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
+  signOut,
+  updatePassword,
+  reauthenticateWithCredential,
+  EmailAuthProvider
 };

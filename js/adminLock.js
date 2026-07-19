@@ -1,7 +1,12 @@
 import { ADMIN_PASSWORD, ADMIN_SESSION_KEY } from "./constants.js";
+import { state } from "./state.js";
+import { ensureCurrentUser } from "./auth.js";
 import { showPop } from "./ui.js";
 
-// Admin Lock
+// طبقة UI فقط لإخفاء شاشة الإدارة عن العين - ليست حدود الأمان الحقيقية.
+// الحماية الفعلية هي Firestore rules + roles/{uid} (state.isAdminUser أدناه
+// يُقرأ من وثيقة roles/{uid} بعد تسجيل الدخول عبر Firebase Authentication،
+// وأي كتابة إدارية سترفضها القواعد على الخادم حتى لو تجاوزت هذه الشاشة).
 export function isAdminUnlocked() {
   try {
     return sessionStorage.getItem(ADMIN_SESSION_KEY) === "yes";
@@ -16,13 +21,32 @@ export function setAdminUnlocked() {
   } catch (e) { }
 }
 
-export function ensureAdminAccess() {
-  return new Promise(resolve => {
-    if (!document.getElementById("exerciseForm")) {
-      resolve(true);
-      return;
-    }
+function showNotAdminMessage() {
+  const main = document.querySelector("main.container");
+  if (!main) return;
 
+  main.innerHTML = `
+    <section class="card" style="text-align:center; padding:40px 20px;">
+      <h2>🚫 هذا الحساب لا يملك صلاحية Admin</h2>
+      <p>سجّلي الدخول بحساب يملك صلاحية Admin (يُضاف يدويًا في Firestore من طرف مالك المشروع)، أو ارجعي لصفحة العرض.</p>
+      <a href="index.html">العودة للصفحة الرئيسية</a>
+    </section>
+  `;
+}
+
+export async function ensureAdminAccess() {
+  if (!document.getElementById("exerciseForm")) return true;
+
+  // تسجيل الدخول عبر Firebase Auth أولًا - هذا ما تعتمد عليه Firestore rules فعليًا،
+  // شاشة كلمة المرور أدناه واجهة إضافية فقط.
+  await ensureCurrentUser();
+
+  if (!state.isAdminUser) {
+    showNotAdminMessage();
+    return false;
+  }
+
+  return new Promise(resolve => {
     if (isAdminUnlocked()) {
       document.body.classList.remove("admin-locked");
       resolve(true);

@@ -167,6 +167,27 @@ export function countRecordsThatOldSanitizeWouldRemove(done, data = state.cached
   }, 0);
 }
 
+// نسخة عامة مختصرة من آخر إنجازات المستخدمة - تُستخدم لملف public-profiles
+// حتى لا نضطر لكشف خريطة done{} الكاملة (بكل تواريخها) لبقية المشاركات.
+export function buildRecentDone(data, done, limit = 5) {
+  const itemsById = getItemsById(data);
+
+  return Object.entries(done || {})
+    .map(([id, record]) => ({ id, record, item: itemsById[id] }))
+    .filter(entry => entry.item && isDone(entry.record))
+    .map(entry => {
+      const completedAt = getCompletedAt(entry.record);
+      return {
+        id: entry.id,
+        title: entry.item.title || "",
+        type: entry.item.type || "workout",
+        completedAt: (completedAt || new Date(0)).toISOString()
+      };
+    })
+    .sort((a, b) => new Date(b.completedAt) - new Date(a.completedAt))
+    .slice(0, limit);
+}
+
 export function mergeDoneRecords(data, firebaseDone = {}, localDone = {}) {
   const merged = sanitizeDoneRecords(firebaseDone, data);
   const safeLocal = sanitizeDoneRecords(localDone, data);

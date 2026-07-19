@@ -1,6 +1,6 @@
 import { db, doc, getDoc, setDoc } from "./firebase.js";
 import { state } from "./state.js";
-import { formatLocalDate, userDocId } from "./utils.js";
+import { formatLocalDate } from "./utils.js";
 
 export const GAME_STATE_COLLECTION = "game-state";
 const GAME_STATE_KEY = "fitness_game_state_v2";
@@ -22,7 +22,7 @@ export const WHEEL_REWARDS = [
 ];
 
 function currentUserKey() {
-  return userDocId(state.currentUser || "guest");
+  return state.currentUserUid || "guest";
 }
 
 function localKey() {
@@ -66,7 +66,7 @@ function saveLocalGameState(value) {
 }
 
 export async function loadGameState() {
-  if (!state.currentUser) return defaultGameState();
+  if (!state.currentUserUid) return defaultGameState();
 
   const cached = getCachedGameState();
   const snap = await getDoc(doc(db, GAME_STATE_COLLECTION, currentUserKey()));
@@ -86,7 +86,7 @@ export async function saveGameState(nextState) {
 
   saveLocalGameState(normalized);
 
-  if (state.currentUser) {
+  if (state.currentUserUid) {
     await setDoc(doc(db, GAME_STATE_COLLECTION, currentUserKey()), normalized, { merge: true });
   }
 

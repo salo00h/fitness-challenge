@@ -1,7 +1,15 @@
-import { doc, setDoc, getDoc, db } from "./firebase.js";
+import {
+  doc,
+  setDoc,
+  db,
+  auth,
+  updatePassword,
+  reauthenticateWithCredential,
+  EmailAuthProvider
+} from "./firebase.js";
 import { USERS_COLLECTION, AVATARS } from "./constants.js";
 import { state } from "./state.js";
-import { saveDone } from "./auth.js";
+import { saveDone, isStrongEnoughPassword, deriveAuthEmail, mirrorPublicProfile } from "./auth.js";
 import { challengeName } from "./challengeMeta.js";
 import { getExpectedDate, isProgramDayOnTime } from "./commitment.js";
 import {
@@ -15,14 +23,12 @@ import {
   formatDateTime,
   getCompletedAt,
   isDone,
-  userDocId,
   weekName,
   dayName,
   getProgressTitle,
   startOfDay
 } from "./utils.js";
 import { getUserAvatar, showPop } from "./ui.js";
-import { hashPassword, isStrongEnoughPassword } from "./auth.js";
 
 function getLatestAchievement(data, done) {
   const byId = data.reduce((map, item) => {
@@ -128,15 +134,16 @@ export function buildAchievementShareText(data) {
 }
 
 export async function saveUserAvatar(avatar) {
-  if (!AVATARS.includes(avatar) || !state.currentUser) return;
+  if (!AVATARS.includes(avatar) || !state.currentUserUid) return;
 
-  await setDoc(doc(db, USERS_COLLECTION, userDocId(state.currentUser)), {
+  await setDoc(doc(db, USERS_COLLECTION, state.currentUserUid), {
     name: state.currentUser,
     avatar,
     updatedAt: new Date().toISOString()
   }, { merge: true });
 
   state.currentUserProfile = { ...(state.currentUserProfile || {}), avatar };
+  await mirrorPublicProfile();
   state.cachedParticipants = null;
   showPop("تم حفظ الصورة الرمزية");
   renderPersonalProfile(state.cachedData);
@@ -163,7 +170,7 @@ export function renderPersonalProfile(data) {
 
   const done = state.currentDone || {};
   const stats = calcUserStats(data, done);
-  const hasPassword = !!(state.currentUserProfile && state.currentUserProfile.passwordHash);
+  const hasPassword = !!auth.currentUser;
   const latestAchievement = getLatestAchievement(data, done);
   const avatar = getUserAvatar(state.currentUserProfile || { name: state.currentUser });
   const badges = getUserBadges(stats, 99);
@@ -286,8 +293,8 @@ export function showChangePasswordDialog() {
     const confirmPassword = confirmInput.value;
 
     if (!isStrongEnoughPassword(newPassword)) {
-      setError("كلمة المرور الجديدة يجب ألا تقل عن 4 أحرف");
-      showPop("كلمة المرور الجديدة يجب ألا تقل عن 4 أحرف", "error");
+      setError("كلمة المرور الجديدة يجب ألا تقل عن 6 أحرف");
+      showPop("كلمة المرور الجديدة يجب ألا تقل عن 6 أحرف", "error");
       nextInput.select();
       return;
     }
@@ -299,46 +306,27 @@ export function showChangePasswordDialog() {
       return;
     }
 
+    if (!auth.currentUser) {
+      setError("يجب تسجيل الدخول أولاً");
+      return;
+    }
+
     try {
-      const ref = doc(db, USERS_COLLECTION, userDocId(state.currentUser));
-      const snap = await getDoc(ref);
-      const user = snap.exists() ? snap.data() : {};
-
-      if (!user.passwordHash) {
-        setError("يرجى إنشاء كلمة مرور لحماية تقدمك");
-        showPop("يرجى إنشاء كلمة مرور لحماية تقدمك", "error");
-        return;
-      }
-
-      const currentHash = await hashPassword(currentPassword);
-      if (currentHash !== user.passwordHash) {
-        setError("كلمة المرور الحالية غير صحيحة");
-        showPop("كلمة المرور الحالية غير صحيحة", "error");
-        currentInput.select();
-        return;
-      }
-
-      const passwordHash = await hashPassword(newPassword);
-      const passwordChangedAt = new Date().toISOString();
-
-      await setDoc(ref, {
-        passwordHash,
-        passwordCreatedAt: user.passwordCreatedAt || passwordChangedAt,
-        passwordChangedAt
-      }, { merge: true });
-
-      state.currentUserProfile = {
-        ...(state.currentUserProfile || {}),
-        ...user,
-        passwordHash,
-        passwordCreatedAt: user.passwordCreatedAt || passwordChangedAt,
-        passwordChangedAt
-      };
+      const email = await deriveAuthEmail(state.currentUser);
+      const credential = EmailAuthProvider.credential(email, currentPassword);
+      await reauthenticateWithCredential(auth.currentUser, credential);
+      await updatePassword(auth.currentUser, newPassword);
 
       overlay.remove();
       showPop("تم تغيير كلمة المرور بنجاح");
       renderPersonalProfile(state.cachedData);
     } catch (e) {
+      if (e && (e.code === "auth/wrong-password" || e.code === "auth/invalid-credential")) {
+        setError("كلمة المرور الحالية غير صحيحة");
+        showPop("كلمة المرور الحالية غير صحيحة", "error");
+        currentInput.select();
+        return;
+      }
       setError("تعذر تغيير كلمة المرور الآن");
       showPop("تعذر تغيير كلمة المرور الآن", "error");
     }

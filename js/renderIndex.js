@@ -1,6 +1,6 @@
 import { state } from "./state.js";
 import { collection, db, getDocs } from "./firebase.js";
-import { USERS_COLLECTION } from "./constants.js";
+import { PUBLIC_PROFILES_COLLECTION } from "./constants.js";
 import { getData } from "./challengeMeta.js";
 import {
   challengeName,
@@ -26,9 +26,9 @@ import {
   workoutOnly
 } from "./progress.js";
 import {
-  calcUserStats,
   compareParticipantRank,
   participantRankLabel,
+  statsFromPublicProfile,
   withCurrentUserSnapshot
 } from "./participants.js";
 import {
@@ -47,7 +47,6 @@ import {
 import {
   dayName,
   escapeHtml,
-  getCompletedAt,
   getProgramAbsoluteDay,
   getYoutubeThumb,
   isDone,
@@ -105,7 +104,7 @@ async function ensureParticipants(refreshParticipants = true) {
   if (!refreshParticipants && state.cachedParticipants) return state.cachedParticipants;
   if (!refreshParticipants && !state.cachedParticipants) return [];
 
-  const snap = await getDocs(collection(db, USERS_COLLECTION));
+  const snap = await getDocs(collection(db, PUBLIC_PROFILES_COLLECTION));
   state.cachedParticipants = snap.docs.map(docSnap => docSnap.data());
   return state.cachedParticipants;
 }
@@ -118,8 +117,8 @@ export function renderHomeCompetitionMini(data) {
     .filter(user => user.name)
     .map(user => ({
       user,
-      stats: calcUserStats(data, user.done || {}),
-      isMe: String(user.name || "").trim().toLowerCase() === String(state.currentUser || "").trim().toLowerCase()
+      stats: statsFromPublicProfile(user),
+      isMe: !!(user.uid && state.currentUserUid && user.uid === state.currentUserUid)
     }))
     .sort(compareParticipantRank);
 
@@ -263,34 +262,30 @@ export function renderTodayMission(data) {
   `;
 }
 
-export function renderActivityFeed(data) {
+export function renderActivityFeed() {
   const box = document.getElementById("activityFeed");
   if (!box || !state.cachedParticipants) return;
-
-  const byId = data.reduce((map, item) => {
-    map[item.id] = item;
-    return map;
-  }, {});
 
   const seen = new Set();
   const activities = [];
 
+  // نعتمد على recentDone المختصرة والعامة (public-profiles) بدل done{} الخاصة
+  // بالكامل - كل مشاركة تُسهم بآخر 5 إنجازات فقط.
   withCurrentUserSnapshot(state.cachedParticipants).forEach(user => {
     const name = String(user.name || "").trim();
-    if (!name || !user.done) return;
+    if (!name || !Array.isArray(user.recentDone)) return;
 
-    Object.entries(user.done).forEach(([id, record]) => {
-      const item = byId[id];
-      const completedAt = getCompletedAt(record);
-      if (!item || !completedAt || !isDone(record)) return;
+    user.recentDone.forEach(entry => {
+      const completedAt = new Date(entry.completedAt);
+      if (Number.isNaN(completedAt.getTime())) return;
 
-      const key = `${userDocId(name)}-${id}`;
+      const key = `${user.uid || name}-${entry.id}`;
       if (seen.has(key)) return;
       seen.add(key);
 
       activities.push({
         name,
-        item,
+        item: entry,
         completedAt
       });
     });
@@ -654,7 +649,7 @@ export async function renderViewer(options = {}) {
   }).join("");
 
   updateProgressBoard(allData);
-  renderActivityFeed(allData);
+  renderActivityFeed();
   renderHomeCompetitionMini(allData);
   renderGreetingMessage(allData);
 }

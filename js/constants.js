@@ -5,7 +5,14 @@ export const AUTH_KEY = "fitness_current_user_auth_v1";
 export const MIGRATION_KEY = "fitness_done_migrated_to_firebase_v1";
 export const COLLECTION_NAME = "exercises";
 export const USERS_COLLECTION = "participants";
+export const PUBLIC_PROFILES_COLLECTION = "public-profiles";
+export const LEGACY_PARTICIPANTS_COLLECTION = "legacy-participants";
+export const ROLES_COLLECTION = "roles";
+// المستخدم لبناء بريد إلكتروني اصطناعي وحيد لكل اسم من أجل Firebase Authentication
+// (لا يُستخدم للتواصل، فقط ليكون معرّف دخول صالح الصيغة لـ signIn/createUser).
+export const AUTH_EMAIL_DOMAIN = "fitness-challenge-6061e.internal";
 export const CHALLENGE_META_TYPE = "challenge-meta";
+// طبقة UI إضافية فقط لإخفاء أزرار الإدارة عن العين - الحماية الحقيقية هي Firestore rules + roles/{uid}.
 export const ADMIN_PASSWORD = "1234";
 export const ADMIN_SESSION_KEY = "fitness_admin_unlocked_v1";
 export const THEME_KEY = "fitness_theme_v1";

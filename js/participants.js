@@ -1,9 +1,16 @@
-import { collection, db, getDocs } from "./firebase.js";
-import { USERS_COLLECTION } from "./constants.js";
+import { collection, db, doc, getDoc, getDocs } from "./firebase.js";
+import { PUBLIC_PROFILES_COLLECTION, USERS_COLLECTION } from "./constants.js";
 import { state } from "./state.js";
 import { challengeName, getData } from "./challengeMeta.js";
-import { calcCommitmentPercent, calcCommitmentStreak, getExpectedDate } from "./commitment.js";
 import {
+  calcCommitmentPercent,
+  calcCommitmentStreak,
+  countCompletedChallenges,
+  getExpectedDate,
+  getFastestCompletedWeek
+} from "./commitment.js";
+import {
+  buildRecentDone,
   calcCompletionPercent,
   countRecordsThatOldSanitizeWouldRemove,
   getEarlyCompletionRecords,
@@ -26,27 +33,42 @@ export function isCurrentUserName(name) {
   return normalizeUserName(name).toLowerCase() === normalizeUserName(state.currentUser).toLowerCase();
 }
 
-export function withCurrentUserSnapshot(users = []) {
-  if (!normalizeUserName(state.currentUser)) return users;
+// يبني نسخة "علنية" (بدون بيانات خاصة) من الجلسة الحالية، بنفس شكل وثائق
+// public-profiles، لتحديث بطاقة المستخدمة الحالية فورًا في الترتيب/النشاط
+// دون الحاجة لانتظار قراءة جديدة من الخادم.
+export function currentUserPublicSnapshot() {
+  if (!state.currentUserUid) return null;
 
-  const currentName = normalizeUserName(state.currentUser);
-  const currentKey = currentName.toLowerCase();
-  const profile = state.currentUserProfile || {};
-  const snapshot = {
-    ...profile,
-    name: currentName,
-    done: state.currentDone || {}
+  const done = state.currentDone || {};
+  const stats = calcUserStats(state.cachedData, done);
+  return {
+    uid: state.currentUserUid,
+    name: normalizeUserName(state.currentUser),
+    avatar: (state.currentUserProfile && state.currentUserProfile.avatar) || undefined,
+    publicStats: {
+      ...stats,
+      completedChallenges: countCompletedChallenges(state.cachedData, done),
+      fastestWeek: getFastestCompletedWeek(state.cachedData, done)
+    },
+    recentDone: buildRecentDone(state.cachedData, done)
   };
+}
+
+export function withCurrentUserSnapshot(users = []) {
+  const snapshot = currentUserPublicSnapshot();
+  if (!snapshot) return users;
 
   let found = false;
   const merged = users.map(user => {
-    if (normalizeUserName(user.name).toLowerCase() !== currentKey) return user;
+    const sameUid = user.uid && snapshot.uid && user.uid === snapshot.uid;
+    const sameName = !user.uid && normalizeUserName(user.name).toLowerCase() === snapshot.name.toLowerCase();
+    if (!sameUid && !sameName) return user;
+
     found = true;
     return {
       ...user,
       ...snapshot,
-      avatar: snapshot.avatar || user.avatar,
-      done: snapshot.done
+      avatar: snapshot.avatar || user.avatar
     };
   });
 
@@ -67,6 +89,28 @@ export function getParticipantWeekScope(data) {
     weekData: challengeData.filter(x => Number(x.week) === Number(week)),
     weekLabel: `${challengeName(challenge)} - ${weekName(week)}`
   };
+}
+
+function emptyPublicStats() {
+  return {
+    completed: 0,
+    total: 0,
+    minutes: 0,
+    completedWeeks: 0,
+    percent: 0,
+    commitment: 100,
+    streak: 0,
+    weekPercent: 0,
+    weekLabel: "",
+    title: getProgressTitle(0)
+  };
+}
+
+// بيانات الترتيب/الشرف العامة تُقرأ من public-profiles (بدون done{} الخاصة)،
+// لذلك نعتمد على الإحصائيات المحسوبة والمخزَّنة مسبقًا في publicStats بدل
+// إعادة حسابها من done الخاص بمشاركة أخرى (لم يعد متاحًا للقراءة أصلًا).
+export function statsFromPublicProfile(user) {
+  return { ...emptyPublicStats(), ...(user.publicStats || {}) };
 }
 
 export function calcUserStats(data, done) {
@@ -103,10 +147,13 @@ export function getUserBadges(stats, rankIndex = 99) {
   return badges.slice(0, 4);
 }
 
-export function getLatestCompletionMs(done = {}) {
-  const times = Object.values(done || {})
-    .map(record => getCompletedAt(record))
-    .filter(Boolean)
+// آخر وقت إنجاز معروف لمشاركة - يعتمد على recentDone المختصرة والعامة
+// (public-profiles) بدل done{} الخاصة الكاملة، بما أنها لم تعد متاحة عند
+// عرض مشاركات أخريات.
+export function getLatestCompletionMs(recentDone = []) {
+  const times = (Array.isArray(recentDone) ? recentDone : [])
+    .map(entry => new Date(entry.completedAt))
+    .filter(date => !Number.isNaN(date.getTime()))
     .map(date => date.getTime());
 
   return times.length ? Math.max(...times) : Number.MAX_SAFE_INTEGER;
@@ -117,7 +164,7 @@ export function compareParticipantRank(a, b) {
     b.stats.percent - a.stats.percent ||
     b.stats.streak - a.stats.streak ||
     b.stats.minutes - a.stats.minutes ||
-    getLatestCompletionMs(a.user.done || {}) - getLatestCompletionMs(b.user.done || {}) ||
+    getLatestCompletionMs(a.user.recentDone) - getLatestCompletionMs(b.user.recentDone) ||
     String(a.user.name).localeCompare(String(b.user.name), "ar");
 }
 
@@ -143,16 +190,25 @@ export async function debugUserDone(name = state.currentUser) {
   }
 
   const data = state.cachedData.length ? state.cachedData : await getData();
+  const isSelf = wantedName.toLowerCase() === normalizeUserName(state.currentUser).toLowerCase();
 
-  if (!state.cachedParticipants) {
-    const snap = await getDocs(collection(db, USERS_COLLECTION));
-    state.cachedParticipants = snap.docs.map(d => d.data());
+  // participants/{uid} أصبحت خاصة: القراءة الذاتية تعمل دائمًا، وقراءة مشاركة
+  // أخرى تنجح فقط لحساب Admin (بحكم Firestore rules)، غير ذلك تُرفض بوضوح.
+  let user = null;
+  try {
+    if (isSelf && state.currentUserUid) {
+      const snap = await getDoc(doc(db, USERS_COLLECTION, state.currentUserUid));
+      user = snap.exists() ? snap.data() : null;
+    } else {
+      const snap = await getDocs(collection(db, USERS_COLLECTION));
+      user = snap.docs
+        .map(d => d.data())
+        .find(item => normalizeUserName(item.name).toLowerCase() === wantedName.toLowerCase()) || null;
+    }
+  } catch (e) {
+    console.warn("debugUserDone: ليست لديك صلاحية لعرض بيانات مشاركة أخرى (متاح لصاحبة الحساب أو Admin فقط)", e);
+    return null;
   }
-
-  const users = withCurrentUserSnapshot(state.cachedParticipants || []);
-  const user = users.find(item =>
-    normalizeUserName(item.name).toLowerCase() === wantedName.toLowerCase()
-  );
 
   if (!user) {
     console.warn(`debugUserDone: لم أجد مشاركة باسم ${wantedName}`);
@@ -213,7 +269,7 @@ export async function renderParticipantsBoard(data, options = {}) {
   if (!refreshParticipants && !state.cachedParticipants) return;
 
   if (refreshParticipants || !state.cachedParticipants) {
-    const snap = await getDocs(collection(db, USERS_COLLECTION));
+    const snap = await getDocs(collection(db, PUBLIC_PROFILES_COLLECTION));
     state.cachedParticipants = snap.docs.map(d => d.data());
   }
 
@@ -223,7 +279,7 @@ export async function renderParticipantsBoard(data, options = {}) {
 
   const visibleUsers = users
     .map(user => {
-      const stats = calcUserStats(data, user.done || {});
+      const stats = statsFromPublicProfile(user);
       const isMe = isCurrentUserName(user.name);
       return { user, stats, isMe };
     })
@@ -297,7 +353,7 @@ export function renderHallOfFame(data) {
     .filter(user => user.name)
     .map(user => ({
       user,
-      stats: calcUserStats(data, user.done || {})
+      stats: statsFromPublicProfile(user)
     }))
     .filter(row => row.stats.percent > 0 || isCurrentUserName(row.user.name));
 

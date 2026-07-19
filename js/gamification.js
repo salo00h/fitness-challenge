@@ -6,14 +6,13 @@ import {
   getTodayAbsoluteDay,
   isFutureProgramDayItems
 } from "./commitment.js";
-import { calcUserStats, compareParticipantRank, withCurrentUserSnapshot } from "./participants.js";
+import { calcUserStats, compareParticipantRank, statsFromPublicProfile, withCurrentUserSnapshot } from "./participants.js";
 import {
   escapeHtml,
   formatLocalDate,
   getCompletedAt,
   isDone,
   normalizeUserName,
-  userDocId,
   weekName
 } from "./utils.js";
 import {
@@ -52,7 +51,7 @@ const DAILY_REWARDS = [
 ];
 
 function currentUserKey() {
-  return userDocId(state.currentUser || "guest");
+  return state.currentUserUid || "guest";
 }
 
 function todayKey(date = new Date()) {
@@ -142,7 +141,7 @@ export function sendBrowserNotification(title, body) {
 }
 
 export async function getUserNotifications(options = {}) {
-  if (!state.currentUser) return [];
+  if (!state.currentUserUid) return [];
 
   const { includeArchived = false } = options;
   const snap = await getDocs(collection(db, NOTIFICATIONS_COLLECTION));
@@ -157,7 +156,7 @@ export async function getUserNotifications(options = {}) {
 }
 
 export async function pushUserNotification(item, options = {}) {
-  if (!state.currentUser || !item) return null;
+  if (!state.currentUserUid || !item) return null;
 
   const row = normalizeNotification(item);
   const existing = await getUserNotifications({ includeArchived: true });
@@ -196,7 +195,7 @@ export async function deleteNotification(docId) {
 
 export async function renderInboxBadge() {
   const link = document.querySelector('.topbar nav a[href="messages.html"]');
-  if (!link || !state.currentUser) return;
+  if (!link || !state.currentUserUid) return;
 
   try {
     const rows = await getUserNotifications();
@@ -225,14 +224,15 @@ export function buildCompetitionRows(data, users = state.cachedParticipants || [
       .filter(user => normalizeUserName(user.name))
       .map(user => ({
         user,
-        stats: calcUserStats(data, user.done || {})
+        stats: statsFromPublicProfile(user)
       }))
   );
 }
 
 export function getCurrentRank(rows) {
   const index = rows.findIndex(row =>
-    normalizeUserName(row.user.name).toLowerCase() === normalizeUserName(state.currentUser).toLowerCase()
+    (row.user.uid && state.currentUserUid && row.user.uid === state.currentUserUid) ||
+    (!row.user.uid && normalizeUserName(row.user.name).toLowerCase() === normalizeUserName(state.currentUser).toLowerCase())
   );
 
   return index >= 0 ? index + 1 : null;
@@ -486,7 +486,7 @@ export function syncInboxMessages(data = state.cachedData, users = state.cachedP
 }
 
 export async function syncFirebaseInboxMessages(data = state.cachedData, users = state.cachedParticipants || [], options = {}) {
-  if (!state.currentUser) return [];
+  if (!state.currentUserUid) return [];
 
   const rows = buildCompetitionRows(data, users);
   const generated = [
@@ -510,7 +510,7 @@ export async function syncFirebaseInboxMessages(data = state.cachedData, users =
 }
 
 export function maybeShowSmartMoment(data = state.cachedData, users = state.cachedParticipants || []) {
-  if (!state.currentUser) return;
+  if (!state.currentUserUid) return;
 
   const key = `${storageKey(MOMENT_KEY)}_${todayKey()}`;
   if (localStorage.getItem(key) === "yes") return;
@@ -585,7 +585,7 @@ function buildCoachAdvice(profile, rank) {
 }
 
 export function renderGamificationHub(data = state.cachedData, users = state.cachedParticipants || []) {
-  if (!state.currentUser) return;
+  if (!state.currentUserUid) return;
 
   const main = document.querySelector("main.container");
   if (!main || (!document.getElementById("days") && !document.getElementById("doneCount"))) return;
